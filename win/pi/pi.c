@@ -1,28 +1,79 @@
 /**
- *   PIC/DLL Injector v0.1
- *   Copyright (C) 2014, 2015 Odzhan
- *
- *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+  Copyright © 2014-2017 Odzhan. All Rights Reserved.
 
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+
+  1. Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+  3. The name of the author may not be used to endorse or promote products
+  derived from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY AUTHORS "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE. */
+
+#define UNICODE  
 #define _CRT_SECURE_NO_WARNINGS
 #include "pi.h"
 
 #if !defined (__GNUC__)
+#pragma comment (lib, "Shell32.lib")
 #pragma comment (lib, "advapi32.lib")
 #pragma comment (lib, "dbghelp.lib")
 #endif
+
+int GetMode(void)
+{
+  SYSTEM_INFO si;
+  CONTEXT     c;
+  DWORD       cpu;
+  
+  GetSystemInfo(&si);
+
+  cpu=si.wProcessorArchitecture;
+  
+  ZeroMemory(&c, sizeof(c));
+  c.ContextFlags = CONTEXT_SEGMENTS;
+
+  GetThreadContext(GetCurrentThread(), &c);
+
+  // if this is x86
+  if (cpu==PROCESSOR_ARCHITECTURE_INTEL) {
+    // gs will be zero for legacy systems - thanks hh86
+    return c.SegGs==0 ? X86_MODE : WOW64_MODE;
+  }
+  return X64_MODE;
+}
+
+BOOL IsWow64(HANDLE hProcess)
+{
+  BOOL bWow64 = FALSE;
+  pIsWow64Process IsWow64Processx;
+  
+  IsWow64Processx = (pIsWow64Process) GetProcAddress(
+        GetModuleHandle(L"kernel32"),"IsWow64Process");
+
+  if (NULL != IsWow64Processx)
+  {
+    IsWow64Processx(hProcess, &bWow64);  
+  }
+  return bWow64;
+}
 
 // set width of console screen buffer
 void setw (SHORT X) {
@@ -36,13 +87,18 @@ void setw (SHORT X) {
 }
 
 // allocate memory
-void *xmalloc (SIZE_T dwSize) {
+LPVOID xmalloc (SIZE_T dwSize) {
   return HeapAlloc (GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
 }
 
+// re-allocate memory
+LPVOID xrealloc (LPVOID lpMem, SIZE_T dwSize) {
+  return HeapReAlloc (GetProcessHeap(), HEAP_ZERO_MEMORY, lpMem, dwSize);
+}
+
 // free memory
-void xfree (void *mem) {
-  HeapFree (GetProcessHeap(), 0, mem);
+VOID xfree (LPVOID lpMem) {
+  HeapFree (GetProcessHeap(), 0, lpMem);
 }
 
 // display error message for last error code
@@ -59,9 +115,9 @@ void xstrerror (char *fmt, ...) {
   if (FormatMessage (
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
         NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
-        (LPSTR)&error, 0, NULL))
+        (LPWSTR)&error, 0, NULL))
   {
-    printf ("  [ %s : %s\n", buffer, error);
+    printf ("  [ %s : %ws\n", buffer, error);
     LocalFree (error);
   } else {
     printf ("  [ %s error : %08lX\n", buffer, dwError);
@@ -69,68 +125,72 @@ void xstrerror (char *fmt, ...) {
 }
 
 // convert process name to id
-DWORD name2pid (char name[], int cpu_mode)
+DWORD name2pid (wchar_t name[], int exclude)
 {
-  HANDLE         hSnap, hProc;
-  PROCESSENTRY32 pe32;
-  DWORD          dwId=0;
-  BOOL           bWow64;
-
-  // get snapshot of all process running
-  hSnap = CreateToolhelp32Snapshot (TH32CS_SNAPPROCESS, 0);
+  HANDLE     hProc;
+  DWORD      dwId=0, mode;
+  BOOL       bWow64;
+  LPVOID     procList;
+  PPROCENTRY pe;
   
-  if (hSnap != INVALID_HANDLE_VALUE) {
-    pe32.dwSize = sizeof (PROCESSENTRY32);
-
-    if (Process32First (hSnap, &pe32)) {
-      do {
-        // is this what we're looking for?
-        if (!lstrcmpi (pe32.szExeFile, name)) 
+  procList = GetProcessList();
+  
+  if (procList!=NULL)
+  {
+    mode = GetMode();
+    for (pe=procList; pe->id; pe++)
+    {
+      // is this what we're looking for?
+      if (!lstrcmpi (pe->name, name)) 
+      {
+        // if we need to exclude some process
+        if (exclude!=0)
         {
-          if (cpu_mode!=0)
-          {
-            hProc=OpenProcess (PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID);
-            if (hProc!=NULL) {
-              bWow64=FALSE;
-              IsWow64Process (hProc, &bWow64);
-              CloseHandle (hProc);
-              
-              // if excluding 32-bit and it's wow64, skip it
-              if (cpu_mode==32 && bWow64) continue;
-              // if excluding 64-bit and it's not wow64, skip it
-              if (cpu_mode==64 && !bWow64) continue;
-              
-              dwId = pe32.th32ProcessID;
-              break;
-            }
-          } else {
-            dwId = pe32.th32ProcessID;
+          hProc=OpenProcess (PROCESS_QUERY_INFORMATION, FALSE, pe->id);
+          if (hProc!=NULL) {
+
+            bWow64 = IsWow64(hProc);
+            
+            CloseHandle(hProc);
+            
+            // if we're excluding 32-bit process and this is Wow64, continue
+            if (exclude==32 && bWow64) continue;
+            
+            // if we're excluding 64-bit apps,not Wow64, continue
+            if (exclude==64 && !bWow64 && mode != X86_MODE) continue;  
+            
+            dwId = pe->id;
             break;
           }
+        } else {
+          dwId = pe->id;
+          break;
         }
-      } while (Process32Next (hSnap, &pe32));
+      }
     }
-    CloseHandle (hSnap);
   }
   return dwId;
 }
 
 // get domain and user id for process
-BOOL proc2uid (HANDLE hProc, char domain[], 
-  PDWORD domlen, char username[], PDWORD ulen) 
+BOOL proc2uid (HANDLE hProc, wchar_t domain[], 
+  PDWORD domlen, wchar_t username[], PDWORD ulen) 
 {
     HANDLE       hToken;
     SID_NAME_USE peUse;
     PTOKEN_USER  pUser;
-    BOOL         bResult = FALSE;
+    BOOL         bResult     = FALSE;
     DWORD        dwTokenSize = 0, 
-                 dwUserName = 64, 
-                 dwDomain = 64;
+                 dwUserName  = 64, 
+                 dwDomain    = 64;
     
     // try open security token
     if (!OpenProcessToken(hProc, TOKEN_QUERY, &hToken)) {
       return FALSE;
     }
+    
+    ZeroMemory (domain, *domlen);
+    ZeroMemory (username, *ulen);
     
     // try obtain user information size
     if (!GetTokenInformation (hToken, TokenUser, 
@@ -156,65 +216,72 @@ BOOL proc2uid (HANDLE hProc, char domain[],
 }
 
 // list running process on system
-DWORD pslist (int cpu_mode)
+DWORD pslist (int exclude)
 {
   HANDLE         hSnap, hProc;
-  PROCESSENTRY32 pe32;
   DWORD          dwId = 0, ulen, dlen, mode=0;
   BOOL           bWow64;
-  char           *cpu, *uid, *dom;
-  char           domain[64], uname[64];
-
-  hSnap = CreateToolhelp32Snapshot (TH32CS_SNAPPROCESS, 0);
+  wchar_t        *cpu, *uid, *dom;
+  wchar_t        domain[64], uname[64];
+  LPVOID         procList;
+  PPROCENTRY      pe;
   
-  if (hSnap != INVALID_HANDLE_VALUE) 
+  procList = GetProcessList();
+  
+  if (procList != NULL) 
   {
-    pe32.dwSize = sizeof (PROCESSENTRY32);
-
     printf("\n%-35s  %-5s   %5s     %s", "Image Name", "PID", "CPU", "domain\\username");
     printf("\n===================================  =====     ======  ===============\n");
     
-    if (Process32First (hSnap, &pe32)) 
-    {
-      do {
-        cpu="??";
-        uid="??";
-        dom="??";
-        // open process to determine CPU mode and user information
-        hProc=OpenProcess (PROCESS_QUERY_INFORMATION, 
-          FALSE, pe32.th32ProcessID);
-          
-        if (hProc!=NULL) {
-          
-          bWow64=FALSE;
-          
-          IsWow64Process (hProc, &bWow64);
-          
-          ulen=sizeof(uname);
-          dlen=sizeof(domain);
-          
-          proc2uid (hProc, domain, &dlen, uname, &ulen);
-          
+    mode = GetMode();
+    
+    for (pe=(PPROCENTRY)procList; pe->id != 0; pe++)
+    {      
+      cpu = L"??";
+      uid = L"??";
+      dom = L"??";
+      // open process to determine CPU mode and user information
+      hProc=OpenProcess (PROCESS_QUERY_INFORMATION, FALSE, pe->id);
+        
+      if (hProc!=NULL) 
+      {          
+        bWow64 = IsWow64(hProc);
+        
+        ulen=sizeof(uname);
+        dlen=sizeof(domain);
+        
+        if (proc2uid (hProc, domain, &dlen, uname, &ulen))
+        {
           dom=domain;
           uid=uname;
-          // i agree this is useless on 32-bit systems
-          // i'm running 64-bit
-          cpu = (bWow64) ? "32" : "64";
-          
-          CloseHandle (hProc);
-        }
-        // if excluding 32-bit and it's wow64, skip it
-        if (cpu_mode==32 && bWow64) continue;
-        // if excluding 64-bit and it's not wow64, skip it
-        if (cpu_mode==64 && !bWow64) continue;
+        }      
+        CloseHandle (hProc);
         
-        printf ("%-35s  %-5lu  %5s-bit  %s\\%s\n", 
-          pe32.szExeFile, pe32.th32ProcessID, 
-          cpu, dom, uid);
-          
-      } while (Process32Next (hSnap, &pe32));
+        // if we're excluding 32-bit process and this is Wow64, continue
+        if (exclude==32 && bWow64) continue;
+        
+        // if we're excluding 64-bit apps and not Wow64, continue
+        if (exclude==64 && !bWow64 && mode != X86_MODE) continue;  
+            
+        // if remote process is not wow64
+        if (!bWow64) {
+          // if we're running on 32-bit mode
+          if (GetMode() == X86_MODE) {
+            // it's a 32-bit process
+            cpu = L"32";
+          } else {
+            // otherwise it's 64-bit
+            cpu = L"64";
+          }
+        } else {
+          cpu = L"32";
+        }          
+      }
+
+      printf ("%-35ws  %-5lu  %5ws-bit  %ws\\%ws\n", 
+        pe->name, pe->id, cpu, dom, uid);
     }
-    CloseHandle (hSnap);
+    xfree (procList);
   }
   return dwId;
 }
@@ -250,16 +317,16 @@ BOOL isElevated (VOID) {
 * Returns TRUE or FALSE
 *
 */
-BOOL set_priv (char szPrivilege[], BOOL bEnable) 
+BOOL set_priv (wchar_t szPrivilege[], BOOL bEnable) 
 {
   HANDLE hToken;
   BOOL   bResult;
+  LUID   luid;
   
   bResult = OpenProcessToken(GetCurrentProcess(),
     TOKEN_ADJUST_PRIVILEGES, &hToken);
   
-  if (bResult) {
-    LUID luid;
+  if (bResult) {    
     bResult = LookupPrivilegeValue(NULL, szPrivilege, &luid);
     if (bResult) {
       TOKEN_PRIVILEGES tp;
@@ -306,6 +373,8 @@ BOOL inject (DWORD dwId, LPVOID pPIC,
   SIZE_T                written;
   DWORD                 old, idx, ec;
   pCreateRemoteThread64 CreateRemoteThread64=NULL;
+  char                  *process;
+  DWORD                 mode = GetMode();
   
   // try open the process
   printf("  [ opening process id %lu\n", dwId);
@@ -340,15 +409,21 @@ BOOL inject (DWORD dwId, LPVOID pPIC,
           }
         }
         
-        IsWow64Process (GetCurrentProcess(), &bLocalWow64);
-        IsWow64Process (hProc, &bRemoteWow64);
+        bLocalWow64  = IsWow64(GetCurrentProcess());
+        bRemoteWow64 = IsWow64(hProc);
         
-        printf("  [ remote process is %s-bit\n", bRemoteWow64 ? "32" : "64");
+        if (!bRemoteWow64 && mode != X86_MODE) {
+          process="64";
+        } else process="32";
+        
+        printf("  [ remote process is %s-bit\n", process);
+                
         if (dbg) {
           printf("  [ attach debugger now or set breakpoint on %p\n", pCode);
           printf("  [ press any key to continue . . .\n");
           fgetc (stdin);
         }
+        
         printf("  [ creating thread\n");
         
         // if remote process is not wow64 but I am,
@@ -408,28 +483,28 @@ BOOL FileExists (LPCTSTR szPath)
 }
 
 // read a PIC file from disk into memory
-BOOL read_pic (char f[], LPVOID *code, SIZE_T *code_size) {
-  LPVOID        pData;
-  HANDLE        hFile;
-  LARGE_INTEGER size;
-  DWORD         read;
-  BOOL          bStatus=FALSE;
+BOOL read_pic (wchar_t f[], LPVOID *code, SIZE_T *code_size) {
+  LPVOID pData;
+  HANDLE hFile;
+  DWORD  size;
+  DWORD  read;
+  BOOL   bStatus=FALSE;
   
-  printf ("  [ opening %s\n", f);
+  printf ("  [ opening %ws\n", f);
   hFile=CreateFile (f, GENERIC_READ, FILE_SHARE_READ,
       0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
       
   if (hFile != INVALID_HANDLE_VALUE)
   {
     printf ("  [ getting size\n");
-    GetFileSizeEx (hFile, &size);
+    size = GetFileSize (hFile, 0);
     
-    printf ("  [ allocating %lu bytes of memory for file\n", size.LowPart);
-    pData=xmalloc(size.LowPart);
+    printf ("  [ allocating %lu bytes of memory for file\n", size);
+    pData=xmalloc(size);
     if (pData != NULL)
     {
       printf ("  [ reading\n");
-      bStatus=ReadFile (hFile, pData, size.LowPart, &read, 0);
+      bStatus=ReadFile (hFile, pData, size, &read, 0);
       *code=pData;
       *code_size=read;
     } else {
@@ -442,7 +517,7 @@ BOOL read_pic (char f[], LPVOID *code, SIZE_T *code_size) {
   return bStatus;
 }
 
-char* getparam (int argc, char *argv[], int *i)
+wchar_t* getparam (int argc, wchar_t *argv[], int *i)
 {
   int n=*i;
   if (argv[n][2] != 0) {
@@ -472,52 +547,56 @@ void usage (void)
   exit (0);
 }
 
-int main (int argc, char *argv[])
+int main (void)
 {
-  SIZE_T code_size=0;
-  LPVOID code=NULL;
-  DWORD  pid=0, cpu_mode=0;
-  char   *proc=NULL, *pic=NULL; 
-  char   *dll=NULL, *cmd=NULL;
-  char   *cpu=NULL;
-  int    i, plist=0, native=0, dbg=0;
-  char   opt;
+  SIZE_T  code_size=0;
+  LPVOID  code=NULL;
+  DWORD   pid=0, cpu_mode=0;
+  wchar_t *proc=NULL, *pic=NULL; 
+  wchar_t *dll=NULL, *cmd=NULL;
+  wchar_t *cpu=NULL;
+  int     i, plist=0, native=0, dbg=0;
+  wchar_t opt;
+  wchar_t **argv;
+  int     argc;
+  
+  argv = CommandLineToArgvW(GetCommandLineW(), &argc);
   
   setw (300);
   
-  printf("\n  [ PIC/DLL injector v0.1");
-  printf("\n  [ Copyright (c) 2014, 2015 Odzhan\n\n");
+  printf("\n  [ PIC/DLL injector v0.2");
+  printf("\n  [ Copyright (c) 2014-2017 Odzhan\n\n");
   
   for (i=1; i<argc; i++) {
-    if (argv[i][0]=='/' || argv[i][0]=='-') {
+    if (argv[i][0]==L'/' || argv[i][0]==L'-') {
       opt=argv[i][1];
       switch (opt) {
         // wait after memory allocation before running thread
-        case 'd' :
+        case L'd' :
           dbg=1;
           break;
         // Execute command in remote process
-        case 'e' :
+        case L'e' :
           cmd=getparam (argc, argv, &i);
           break;
         // Load PIC file into remote process
-        case 'f' :
+        case L'f' :
           pic=getparam (argc, argv, &i);
           break;
         // Load DLL into remote process
-        case 'l' :
+        case L'l' :
           dll=getparam (argc, argv, &i);
           break;
         // List running processes
-        case 'p' :
+        case L'p' :
           plist=1;
           break;
         // cpu mode
-        case 'x' :
+        case L'x' :
           cpu=getparam (argc, argv, &i);
           break;
-        case '?' :
-        case 'h' :
+        case L'?' :
+        case L'h' :
         default  : { usage (); break; }
       }
     } else {
@@ -538,7 +617,7 @@ int main (int argc, char *argv[])
   }
 
   if (cpu!=NULL) {
-    cpu_mode=strtol (cpu, NULL, 10);
+    cpu_mode=wcstol (cpu, NULL, 10);
     if (cpu_mode!=32 && cpu_mode!=64) {
       printf ("  [ invalid cpu mode. 32 and 64 are valid");
       return 0;
@@ -558,10 +637,10 @@ int main (int argc, char *argv[])
   }
   
   // try convert proc to integer
-  pid=strtol (proc, NULL, 10);
+  pid=wcstol (proc, NULL, 10);
   
   if (pid==0) {
-    printf ("  [ searching %s-bit processes for %s\n", 
+    printf ("  [ searching %s-bit processes for %ws\n", 
       cpu_mode==0 ? "32 and 64" : (cpu_mode==64 ? "32" : "64"), proc);
     // else get id from name
     pid=name2pid (proc, cpu_mode);
@@ -569,14 +648,14 @@ int main (int argc, char *argv[])
   
   // no target action?
   if (cmd==NULL && dll==NULL && pic==NULL) {
-    printf ("  [ no action specified for %s\n", proc);
+    printf ("  [ no action specified for %ws\n", proc);
     usage();
   }
   
   // have a pid?
   if (pid == 0)
   {
-    printf ("  [ unable to obtain process id for %s\n", proc);
+    printf ("  [ unable to obtain process id for %ws\n", proc);
     return 0;
   }
   

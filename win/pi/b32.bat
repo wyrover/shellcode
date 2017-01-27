@@ -5,6 +5,6 @@ yasm -fbin -DBIN asm\CreateThreadPIC.asm -o CreateThreadPIC.bin
 disasm -b64 -fc ExecPIC.bin >winexec.h
 disasm -b64 -fc LoadDLLPIC.bin >loadlib.h
 disasm -b64 -fc CreateThreadPIC.bin >createthread.h
-cl /nologo /c pi.c 
-link /nologo /subsystem:console pi.obj /out:pi32.exe
+cl /nologo /c pi.c pslist.c
+link /nologo /subsystem:console pi.obj pslist.obj /out:pi32.exe
 del *.obj
