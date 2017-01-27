@@ -5,15 +5,15 @@ This is work in progress so if you decide to fork or try running codes and they 
 
 # Windows NT
 
-![alt text](https://github.com/odzhan/shellcode/tree/master/win/ss/winnt.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/win/ss/winnt.png)
 
 # Windows 2000
 
-![alt text](https://github.com/odzhan/shellcode/tree/master/win/ss/win2k.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/win/ss/win2k.png)
 
 # Windows XP
 
-![alt text](https://github.com/odzhan/shellcode/tree/master/win/ss/winxp.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/win/ss/winxp.png)
     
 # Author
 
