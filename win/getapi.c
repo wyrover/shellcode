@@ -98,13 +98,13 @@ uint32_t crc32c(const char *s)
   int      i;
   uint32_t crc=0;
   
-  do {
+  while (*s) {
     crc ^= (uint8_t)(*s++ | 0x20);
     
     for (i=0; i<8; i++) {
       crc = (crc >> 1) ^ (0x82F63B78 * (crc & 1));
     }
-  } while (*(s - 1) != 0);
+  }
   return crc;
 }
 
@@ -243,24 +243,32 @@ LPVOID get_api (DWORD dwHash)
 #ifdef TEST
 int main(int argc, char *argv[])
 {
-  DWORD  h=0;
+  DWORD  h, dll_h, api_h;
   LPVOID p=NULL;
   
   if (argc!=3) {
     printf("\nusage: getapi <DLL> <API>\n");
     return 0;
   }
-  h = crc32c(argv[1]) + crc32c(argv[2]);
+  dll_h = crc32c(argv[1]);
+  api_h = crc32c(argv[2]);
   
-  p = get_apix(h);
+  h = dll_h + api_h;
+  
+  p = get_api(h);
   // if not found
   if (p==NULL) {
     // load the module into memory
     LoadLibrary(argv[1]);
     // then try again
-    p = get_apix(h);
+    p = get_api(h);
   }
-  printf("\ncrc-32c : %08X\nAddress of %s = %p", 
+  printf("\ncrc-32c(\"%s\") = %08X"
+         "\ncrc-32c(\"%s\") = %08X"
+         "\ncrc-32c         = %08X"
+         "\nAddress of %s   = %p", 
+      argv[1], dll_h,
+      argv[2], api_h,
       h, argv[2], p);
 }
 #endif
