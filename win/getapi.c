@@ -31,8 +31,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-LPVOID get_apix (DWORD dwHash);
-
 #define RVA2VA(type, base, rva) (type)((ULONG_PTR) base + rva)
 
 typedef void *PPS_POST_PROCESS_INIT_ROUTINE;
@@ -107,6 +105,11 @@ uint32_t crc32c(const char *s)
   }
   return crc;
 }
+
+#ifdef ASM
+LPVOID get_apix(DWORD);
+#define get_api(x) get_apix (x);
+#else
 
 LPVOID search_exp(LPVOID base, DWORD hash)
 {
@@ -239,6 +242,7 @@ LPVOID get_api (DWORD dwHash)
   }
   return api_adr;
 }
+#endif
 
 #ifdef TEST
 int main(int argc, char *argv[])
