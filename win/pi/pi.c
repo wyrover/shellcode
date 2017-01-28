@@ -257,10 +257,14 @@ DWORD pslist (int exclude)
         CloseHandle (hProc);
         
         // if we're excluding 32-bit process and this is Wow64, continue
-        if (exclude==32 && bWow64) continue;
+        if (exclude==32 && bWow64) {
+          continue;
+        }
         
         // if we're excluding 64-bit apps and not Wow64, continue
-        if (exclude==64 && !bWow64 && mode != X86_MODE) continue;  
+        if (exclude==64 && !bWow64 && mode != X86_MODE) {
+          continue;  
+        }
             
         // if remote process is not wow64
         if (!bWow64) {
@@ -281,6 +285,8 @@ DWORD pslist (int exclude)
         pe->name, pe->id, cpu, dom, uid);
     }
     xfree (procList);
+  } else {
+    xstrerror("GetProcessList");
   }
   return dwId;
 }

@@ -27,8 +27,11 @@
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
   
+#define UNICODE
+  
 #include <windows.h>
 #include <stdio.h>
+#include <TlHelp32.h>
 
 LPVOID xmalloc (SIZE_T dwSize);
 LPVOID xrealloc (LPVOID lpMem, SIZE_T dwSize);
@@ -180,10 +183,11 @@ typedef struct _PROCENTRY_T {
   WCHAR name[MAX_PATH];
 } PROCENTRY, *PPROCENTRY;
   
+#ifndef _WIN64  
 /**
  *
  * Obtain list of process names and their corresponding id's
- * across all windows operating systems from NT up to Windows 10
+ * across all 32-bit systems, including Wow64
  *
  */    
 PPROCENTRY GetProcessList(VOID)
@@ -222,6 +226,8 @@ PPROCENTRY GetProcessList(VOID)
     //printf ("\nUnable to obtain list of process");
     xfree(list);
     return NULL;
+  } else {
+    //printf ("\nResult: %08X", status);
   }
   
   p       = (PSYSTEM_PROCESS_INFORMATION)list;
@@ -233,7 +239,7 @@ PPROCENTRY GetProcessList(VOID)
     if (p->ProcessName.Buffer != 0)
     {
       pe[i].id = p->ProcessId; 
-      lstrcpyW(pe[i].name, p->ProcessName.Buffer);
+      lstrcpy(pe[i].name, p->ProcessName.Buffer);
       
       pe_size += sizeof(PROCENTRY);
       pe = xrealloc(pe, pe_size);
@@ -250,7 +256,51 @@ PPROCENTRY GetProcessList(VOID)
   xfree(list);
   return pe;
 }
-      
+#else
+/**
+ *
+ * Since NtQuerySystemInformation doesn't work on 64-bit, we
+ * use the snapshot method
+ *
+ */    
+PPROCENTRY GetProcessList(VOID)
+{
+  HANDLE         hSnap;
+  PROCESSENTRY32 pe32;
+  PPROCENTRY     pe=NULL;
+  DWORD          i=0, pe_size;
+  
+  hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (hSnap != INVALID_HANDLE_VALUE)
+  {
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+
+    if (Process32First(hSnap, &pe32))
+    {
+      i       = 0;
+      pe_size = sizeof(PROCENTRY);
+      pe      = xmalloc(pe_size);
+  
+      do {
+        if (pe32.th32ProcessID==0) continue;
+        
+        pe[i].id = pe32.th32ProcessID; 
+        lstrcpy(pe[i].name, pe32.szExeFile);
+        
+        pe_size += sizeof(PROCENTRY);
+        pe = xrealloc(pe, pe_size);
+        i++;
+        if (pe==NULL) {
+          break;
+        }            
+      } while (Process32Next(hSnap, &pe32));
+    }
+    CloseHandle(hSnap);
+  }
+  return pe;
+}
+#endif
+  
 #ifdef TEST
 // allocate memory
 LPVOID xmalloc (SIZE_T dwSize) {
