@@ -200,7 +200,6 @@ void usage(void) {
 
   printf ("\n  usage: test -s <number> -p <port> -a <ip address> -c <command>\n");
   printf ("\n  -c <command>  Command to execute");
-  //printf ("\n  -o <file>     Save shellcode to <file>");
   printf ("\n  -s <number>   Shellcode to execute (see table below)");
   printf ("\n  -p <port>     Port to use to bind/reverse shell (default is 1234)");
   printf ("\n  -a <ip>       Remote ipv4 address for reverse shell (default is localhost)\n\n");

@@ -47,7 +47,7 @@ In the getapi folder is source code in C containing functions to search the impo
 
 By default, getapi.c will search the export table but if you compile with IMPORT defined, getapi will search import tables instead.
 
-To test out out just the C code in getapi.c using mingw or msvc
+To test out out, compile getapi.c using mingw or msvc
 
 	gcc -DTEST getapi.c -ogetapi
     cl /DTEST getapi.c
