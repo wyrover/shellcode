@@ -7,6 +7,18 @@ If running in wow64 mode and target process is 64-bit, pi will transition to 64-
 
 I wrote this specifically for testing win32 and win64 shellcode because while these codes can run fine by themselves, it's when you inject into another process space that reveals a lot of problems. 
 
+## Building ##
+
+This should compile without error using MSVC or MINGW.
+
+* **MSVC**
+
+	cl pi.c pslist.c
+
+* **Mingw**
+	
+	gcc pi.c pslist.c -opi
+
 ## Usage ##
 
 Currently, you can execute command in context of remote process, load a DLL or just run PIC.
