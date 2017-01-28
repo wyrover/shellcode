@@ -21,15 +21,25 @@ Obtains a list of DLLs (Dynamic Link Library) from the Process Environment Block
 
 * **x86.asm**
 
-x86 assembly code to search PEB, import and export directories for API
+x86 assembly code to search PEB, import and export directories for API to link with getapi.c
 
 * **x64.asm**
 
-x64 assembly code to search PEB, import and export directories for API
+x64 assembly code to search PEB, import and export directories for API to link with getapi.c
 
 * **x84.asm**
 
-Multimode assembly which can run in either x86 or x64 mode to search PEB and export directories for API. Currently, searching import directory is not implemented. 
+Multimode assembly which can run in either x86 or x64 mode to search PEB and export directories for API to link with getapi.c 
+
+Currently, searching import directory is not implemented. 
+
+* **reverse.asm**
+
+Demonstrates multimode assembly to perform an outbound connection to remote host before executing cmd.exe for user interaction.
+
+* **bind.asm**
+
+Demonstrates multimode assembly to accept an inbound connection from remote host before executing cmd.exe for user interaction.
 
 ## Building ##
 
@@ -54,7 +64,7 @@ To use the multimode assembly that will run with either x86 or x86-64 mode, use 
 	<pre>yasm -fwin64 x84.asm -ox84.obj
 	cl /DTEST /DASM getapi.c x84.obj</pre>
 
-## GetAPI usage ##
+## Testing getapi ##
 
 After you've compiled EXE, simply provide the name of a DLL which exports API you need address for and the API name itself. 
 
@@ -63,6 +73,20 @@ getapi function will attempt to find the address of API based on CRC-32C hash.
 	usage: getapi <DLL> <API>
 
 The following screenshots are the bind shell running inside notepad launched from pi (Process Injector)
+
+## Testing bind ##
+
+For this, you need to use the process injector included or some other tool capable of the same.
+
+For example, the following will inject bind.bin into 64-bit process of Internet Explorer.
+
+	pi -fbind.bin iexplore.exe -x32
+
+If successfully executed, cmd.exe will execute once you connect to the host on port 1234 using netcat, ncat or something similar.
+
+	ncat -v4 localhost 1234
+
+The following are screenshots of some legacy systems running the bind assembly code. 
 
 ## Windows NT ##
 
