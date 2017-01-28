@@ -11,7 +11,7 @@ I wrote this specifically for testing win32 and win64 shellcode because while th
 
 Currently, you can execute command in context of remote process, load a DLL or just run PIC.
 
-![alt text](https://github.com/odzhan/shellcode/blob/master/win/pi/ss/pi.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/win/ss/pi.png)
 
 Simply supply a process name/process id along with PIC/DLL file or command line. Let's say we want to inject code into internet explorer.
 
