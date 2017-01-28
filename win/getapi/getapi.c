@@ -26,70 +26,31 @@
   STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
+
+#include "getapi.h"
   
-#include <windows.h>
-#include <stdint.h>
-#include <stdio.h>
-
-#define RVA2VA(type, base, rva) (type)((ULONG_PTR) base + rva)
-
-typedef void *PPS_POST_PROCESS_INIT_ROUTINE;
-
-typedef struct _LSA_UNICODE_STRING {
-  USHORT Length;
-  USHORT MaximumLength;
-  PWSTR  Buffer;
-} LSA_UNICODE_STRING, *PLSA_UNICODE_STRING, UNICODE_STRING, *PUNICODE_STRING;
-
-typedef struct _PEB_LDR_DATA {
-  BYTE       Reserved1[8];
-  PVOID      Reserved2[3];
-  LIST_ENTRY InMemoryOrderModuleList;
-} PEB_LDR_DATA, *PPEB_LDR_DATA;
-
-typedef struct _RTL_USER_PROCESS_PARAMETERS {
-  BYTE           Reserved1[16];
-  PVOID          Reserved2[10];
-  UNICODE_STRING ImagePathName;
-  UNICODE_STRING CommandLine;
-} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
-
-typedef struct _PEB {
-  BYTE                          Reserved1[2];
-  BYTE                          BeingDebugged;
-  BYTE                          Reserved2[1];
-  PVOID                         Reserved3[2];
-  PPEB_LDR_DATA                 Ldr;
-  PRTL_USER_PROCESS_PARAMETERS  ProcessParameters;
-  BYTE                          Reserved4[104];
-  PVOID                         Reserved5[52];
-  PPS_POST_PROCESS_INIT_ROUTINE PostProcessInitRoutine;
-  BYTE                          Reserved6[128];
-  PVOID                         Reserved7[1];
-  ULONG                         SessionId;
-} PEB, *PPEB;
-
-typedef struct _MY_PEB_LDR_DATA {
-  ULONG      Length;
-  BOOL       Initialized;
-  PVOID      SsHandle;
-  LIST_ENTRY InLoadOrderModuleList;
-  LIST_ENTRY InMemoryOrderModuleList;
-  LIST_ENTRY InInitializationOrderModuleList;
-} MY_PEB_LDR_DATA, *PMY_PEB_LDR_DATA;
-
-typedef struct _MY_LDR_DATA_TABLE_ENTRY
+#ifndef _MSC_VER
+#ifdef __i386__
+/* for x86 only */
+unsigned long __readfsdword(unsigned long Offset)
 {
-  LIST_ENTRY     InLoadOrderLinks;
-  LIST_ENTRY     InMemoryOrderLinks;
-  LIST_ENTRY     InInitializationOrderLinks;
-  PVOID          DllBase;
-  PVOID          EntryPoint;
-  ULONG          SizeOfImage;
-  UNICODE_STRING FullDllName;
-  UNICODE_STRING BaseDllName;
-} MY_LDR_DATA_TABLE_ENTRY, *PMY_LDR_DATA_TABLE_ENTRY;
-
+   unsigned long ret;
+   __asm__ volatile ("movl	%%fs:%1,%0"
+     : "=r" (ret) ,"=m" ((*(volatile long *) Offset)));
+   return ret;
+}
+#else
+/* for __x86_64 only */
+unsigned __int64 __readgsqword(unsigned long Offset)
+{
+   void *ret;
+   __asm__ volatile ("movq	%%gs:%1,%0"
+     : "=r" (ret) ,"=m" ((*(volatile long *) (unsigned __int64) Offset)));
+   return (unsigned __int64) ret;
+}
+#endif
+#endif
+  
 // converts string to lowercase
 uint32_t crc32c(const char *s)
 {
@@ -106,11 +67,7 @@ uint32_t crc32c(const char *s)
   return crc;
 }
 
-#ifdef ASM
-LPVOID get_apix(DWORD);
-#define get_api(x) get_apix (x);
-#else
-
+#ifndef ASM
 LPVOID search_exp(LPVOID base, DWORD hash)
 {
   PIMAGE_DOS_HEADER       dos;
@@ -238,7 +195,11 @@ LPVOID get_api (DWORD dwHash)
        dte->DllBase != NULL && api_adr == NULL; 
        dte=(PMY_LDR_DATA_TABLE_ENTRY)dte->InLoadOrderLinks.Flink)
   {
+#ifdef IMPORT    
+    api_adr=search_imp(dte->DllBase, dwHash);
+#else    
     api_adr=search_exp(dte->DllBase, dwHash);
+#endif  
   }
   return api_adr;
 }
@@ -267,13 +228,14 @@ int main(int argc, char *argv[])
     // then try again
     p = get_api(h);
   }
-  printf("\ncrc-32c(\"%s\") = %08X"
-         "\ncrc-32c(\"%s\") = %08X"
-         "\ncrc-32c         = %08X"
-         "\nAddress of %s   = %p", 
-      argv[1], dll_h,
-      argv[2], api_h,
-      h, argv[2], p);
+  printf("\n%08X = crc-32c(\"%s\")"
+         "\n%08X = crc-32c(\"%s\")"
+         "\n%08X = hash to find"
+         "\n%p = Address of \"%s\"\n", 
+      dll_h, argv[1], 
+      api_h, argv[2],
+      h,
+      p, argv[2]);
 }
 #endif
 

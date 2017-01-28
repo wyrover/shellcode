@@ -45,6 +45,9 @@ crc32cx:
     cdq                      ; edx = 0
 crc_l0x:
     lodsb                    ; al = *s++ | 0x20
+    test   al, al
+    jz     crc_l3x
+    
     or     al, 0x20
     xor    dl, al            ; crc ^= c
     push   8
@@ -55,8 +58,8 @@ crc_l1x:
     xor    edx, 0x82F63B78
 crc_l2x:
     loop   crc_l1x
-    cmp    al, 0x20          ; until al==0
-    jnz    crc_l0x
+    jmp    crc_l0x
+crc_l3x:    
     xchg   eax, edx
     
     pop    edx
