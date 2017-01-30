@@ -48,6 +48,9 @@ crc32c:
     cdq                    ; edx = 0
 crc_l0:
     lodsb                  ; al = *s++ | 0x20
+    test   al, al
+    jz     crc_l3
+    
     or     al, 0x20        ; convert to lowercase
     xor    dl, al          ; crc ^= c
     push   8
@@ -58,8 +61,8 @@ crc_l1:
     xor    edx, 0x82F63B78
 crc_l2:
     loop   crc_l1
-    cmp    al, 0x20        ; until al==0
-    jnz    crc_l0
+    jmp    crc_l0
+crc_l3:    
     xchg   eax, edx
     
     pop    rdx

@@ -202,10 +202,11 @@ PPROCENTRY GetProcessList(VOID)
   DWORD                       i;
   
   NtQuerySystemInformation = 
-      (pNtQuerySystemInformation)GetProcAddress(GetModuleHandle("ntdll"), "NtQuerySystemInformation");
+      (pNtQuerySystemInformation)GetProcAddress(
+      GetModuleHandle("ntdll"), "NtQuerySystemInformation");
       
   if (!NtQuerySystemInformation) {
-    //printf ("\nUnable to resolve NtQuerySystemInformation");
+    // we couldn't resolve API address
     return NULL;
   }
   
@@ -216,18 +217,16 @@ PPROCENTRY GetProcessList(VOID)
     list = xrealloc (list, len);
     
     if (list==NULL) {
-      //printf ("\nUnable to allocate memory");
+      // we couldn't reallocate memory
       break;
     }
     status = NtQuerySystemInformation(SystemProcessInformation, list, len, &total);
   } while (status == STATUS_INFO_LEN_MISMATCH);
   
   if (status < 0) {
-    //printf ("\nUnable to obtain list of process");
+    // we were unable to obtain list of process
     xfree(list);
     return NULL;
-  } else {
-    //printf ("\nResult: %08X", status);
   }
   
   p       = (PSYSTEM_PROCESS_INFORMATION)list;
@@ -238,6 +237,7 @@ PPROCENTRY GetProcessList(VOID)
   {
     if (p->ProcessName.Buffer != 0)
     {
+      // copy process id and module name
       pe[i].id = p->ProcessId; 
       lstrcpy(pe[i].name, p->ProcessName.Buffer);
       
@@ -248,8 +248,10 @@ PPROCENTRY GetProcessList(VOID)
         break;
       }        
     }
+    // no more entries? break
     if (p->NextEntryDelta==0) break;
     
+    // advance to next entry
     p = (PSYSTEM_PROCESS_INFORMATION)(((char *)p) + p->NextEntryDelta);
   }
   

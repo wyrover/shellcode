@@ -57,19 +57,90 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
   UNICODE_STRING CommandLine;
 } RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
+// taken from structure defined by rewolf
+// http://blog.rewolf.pl/blog/?p=573
 typedef struct _PEB {
-  BYTE                          Reserved1[2];
-  BYTE                          BeingDebugged;
-  BYTE                          Reserved2[1];
-  PVOID                         Reserved3[2];
-  PPEB_LDR_DATA                 Ldr;
-  PRTL_USER_PROCESS_PARAMETERS  ProcessParameters;
-  BYTE                          Reserved4[104];
-  PVOID                         Reserved5[52];
-  PPS_POST_PROCESS_INIT_ROUTINE PostProcessInitRoutine;
-  BYTE                          Reserved6[128];
-  PVOID                         Reserved7[1];
-  ULONG                         SessionId;
+  BYTE                         InheritedAddressSpace;
+  BYTE                         ReadImageFileExecOptions;
+  BYTE                         BeingDebugged;
+  BYTE                         _SYSTEM_DEPENDENT_01;
+
+  LPVOID                       Mutant;
+	LPVOID                       ImageBaseAddress;
+	PPEB_LDR_DATA                Ldr;
+	PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
+	LPVOID                       SubSystemData;
+	LPVOID                       ProcessHeap;
+	LPVOID                       FastPebLock;
+  LPVOID                       _SYSTEM_DEPENDENT_02;
+	LPVOID                       _SYSTEM_DEPENDENT_03;
+	LPVOID                       _SYSTEM_DEPENDENT_04;
+  union {
+    LPVOID                     KernelCallbackTable;
+    LPVOID                     UserSharedInfoPtr;
+  };  
+  DWORD                        SystemReserved;
+	DWORD                        _SYSTEM_DEPENDENT_05;
+	LPVOID                       _SYSTEM_DEPENDENT_06;
+	LPVOID                       TlsExpansionCounter;
+	LPVOID                       TlsBitmap;
+	DWORD                        TlsBitmapBits[2];
+	LPVOID                       ReadOnlySharedMemoryBase;
+	LPVOID                       _SYSTEM_DEPENDENT_07;
+	LPVOID                       ReadOnlyStaticServerData;
+	LPVOID                       AnsiCodePageData;
+	LPVOID                       OemCodePageData;
+	LPVOID                       UnicodeCaseTableData;
+	DWORD                        NumberOfProcessors;
+	union
+	{
+		DWORD                      NtGlobalFlag;
+		LPVOID                     dummy02;
+	};
+	LARGE_INTEGER                CriticalSectionTimeout;
+	LPVOID                       HeapSegmentReserve;
+	LPVOID                       HeapSegmentCommit;
+	LPVOID                       HeapDeCommitTotalFreeThreshold;
+	LPVOID                       HeapDeCommitFreeBlockThreshold;
+	DWORD                        NumberOfHeaps;
+	DWORD                        MaximumNumberOfHeaps;
+	LPVOID                       ProcessHeaps;
+	LPVOID                       GdiSharedHandleTable;
+	LPVOID                       ProcessStarterHelper;
+	LPVOID                       GdiDCAttributeList;
+	LPVOID                       LoaderLock;
+	DWORD                        OSMajorVersion;
+	DWORD                        OSMinorVersion;
+	WORD                         OSBuildNumber;
+	WORD                         OSCSDVersion;
+	DWORD                        OSPlatformId;
+	DWORD                        ImageSubsystem;
+	DWORD                        ImageSubsystemMajorVersion;
+	LPVOID                       ImageSubsystemMinorVersion;
+	union
+	{
+		LPVOID                     ImageProcessAffinityMask;
+		LPVOID                     ActiveProcessAffinityMask;
+	};
+  #ifdef _WIN64
+	LPVOID                       GdiHandleBuffer[64];
+  #else
+	LPVOID                       GdiHandleBuffer[32];
+  #endif  
+	LPVOID                       PostProcessInitRoutine;
+	LPVOID                       TlsExpansionBitmap;
+	DWORD                        TlsExpansionBitmapBits[32];
+	LPVOID                       SessionId;
+	ULARGE_INTEGER               AppCompatFlags;
+	ULARGE_INTEGER               AppCompatFlagsUser;
+	LPVOID                       pShimData;
+	LPVOID                       AppCompatInfo;
+	PUNICODE_STRING              CSDVersion;
+	LPVOID                       ActivationContextData;
+	LPVOID                       ProcessAssemblyStorageMap;
+	LPVOID                       SystemDefaultActivationContextData;
+	LPVOID                       SystemAssemblyStorageMap;
+	LPVOID                       MinimumStackCommit;  
 } PEB, *PPEB;
 
 typedef struct _MY_PEB_LDR_DATA {
