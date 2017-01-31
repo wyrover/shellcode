@@ -28,32 +28,20 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
 
-    bits 32
+    bits 64
     
-struc pushad_t
-  _edi resd 1
-  _esi resd 1
-  _ebp resd 1
-  _esp resd 1
-  _ebx resd 1
-  _edx resd 1
-  _ecx resd 1
-  _eax resd 1
-  .size:
-endstruc
-
 ; returns    
-;   ebx = pointer to LoadLibraryA    
-;   ebp = pointer to GetProcAddress    
+;   rbx = pointer to LoadLibraryA    
+;   rbp = pointer to GetProcAddress    
 get_lla_gpa:
 _get_lla_gpa:
-    push   30h
-    pop    edx
-    mov    ebx, [fs:edx]     ; ebx = peb
-    mov    ebx, [ebx+08h]    ; ebx = ImageBaseAddress
-    add    edx, [ebx+3ch]    ; eax = e_lfanew
-    mov    esi, [ebx+edx+50h]
-    add    esi, ebx
+    push   60h
+    pop    rdx
+    mov    rbx, [gs:rdx]     ; ebx = peb
+    mov    rbx, [rbx+08h]    ; ebx = ImageBaseAddress
+    add    rdx, [rbx+3ch]    ; eax = e_lfanew
+    mov    esi, [rbx+rdx+50h]
+    add    rsi, rbx
 imp_l0:
     lodsd                    ; OriginalFirstThunk +00h
     xchg   eax, ebp          ; store in ebp
@@ -64,12 +52,12 @@ imp_l0:
     lodsd                    ; FirstThunk         +10h 
     xchg   eax, edi          ; store in edi
     
-    mov    eax, [edx+ebx]
+    mov    rax, [rdx+rbx]
     or     eax, 20202020h    ; convert to lowercase
     cmp    eax, 'kern'
     jnz    imp_l0
     
-    mov    eax, [edx+ebx+4]
+    shr    rax, 32
     or     eax, 20202020h    ; convert to lowercase
     cmp    eax, 'el32'
     jnz    imp_l0
@@ -78,37 +66,38 @@ imp_l0:
     mov    ecx, 'GetP'
     mov    edx, 'ddre'
     call   get_imp
-    push   eax               ; save pointer 
+    push   rax               ; save pointer 
     
     ; locate LoadLibraryA
     mov    ecx, 'Load'
     mov    edx, 'aryA'
     call   get_imp
-    pop    ebp               ; ebp = GetProcAddress
-    xchg   eax, ebx          ; ebx = LoadLibraryA
+    pop    rbp               ; ebp = GetProcAddress
+    push   rax
+    pop    rbx
     ret
 
 get_imp:
-    push   esi
-    push   edi
-    lea    esi, [ebp+ebx]     ; esi = OriginalFirstThunk + base
-    add    edi, ebx           ; edi = FirstThunk + base
+    push   rsi
+    push   rdi
+    lea    rsi, [rbp+rbx]     ; esi = OriginalFirstThunk + base
+    add    rdi, rbx           ; edi = FirstThunk + base
 gi_l0:
-    lodsd                     ; eax = oft->u1.Function, oft++;
-    scasd                     ; ft++;
-    test   eax, eax
+    lodsq                     ; eax = oft->u1.Function, oft++;
+    scasq                     ; ft++;
+    test   rax, rax
     jz     gi_l1              ; get next module if zero
     js     gi_l0              ; skip ordinals 
     
-    cmp    dword[eax+ebx+2], ecx
+    cmp    dword[rax+rbx+2], ecx
     jnz    gi_l0
 
-    cmp    dword[eax+ebx+10], edx
+    cmp    dword[rax+rbx+10], edx
     jnz    gi_l0
     
-    mov    eax, [edi-4]       ; eax = ft->u1.Function
+    mov    rax, [rdi-8]       ; eax = ft->u1.Function
 gi_l1: 
-    pop    edi
-    pop    esi
+    pop    rdi
+    pop    rsi
     ret    
     

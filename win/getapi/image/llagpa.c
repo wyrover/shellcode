@@ -46,6 +46,11 @@ LPVOID get_imp(PIMAGE_IMPORT_DESCRIPTOR imp,
     
   for (;; oft++, ft++) 
   {
+    // no API left?
+    if (oft->u1.AddressOfData==0) break;
+    // skip ordinals
+    if (IMAGE_SNAP_BY_ORDINAL(oft->u1.Ordinal)) continue;
+    
     rva  = oft->u1.AddressOfData;
     ibn  = (PIMAGE_IMPORT_BY_NAME)RVA2VA(ULONG_PTR, base, rva);
     name = (PDWORD)ibn->Name;
@@ -99,8 +104,11 @@ int main(void)
           
   printf ("\nGetProcAddress : %p"
           "\nLoadLibraryA   : %p\n", 
-          GetProcAddress(LoadLibraryA("kernel32"), "GetProcAddress"), 
-          GetProcAddress(LoadLibraryA("kernel32"), "LoadLibraryA"));          
+          GetProcAddress(LoadLibraryA("kernel32"), 
+              "GetProcAddress"), 
+              
+          GetProcAddress(LoadLibraryA("kernel32"), 
+             "LoadLibraryA"));          
   return 0;
 }
 

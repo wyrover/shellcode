@@ -59,7 +59,8 @@ int main(void)
   // locate kernel32.dll
   for (;;) {
     dll   = RVA2VA(PDWORD, base, imp->Name);
-    if ((dll[0] | 0x20202020) == 'nrek') break;
+    if ((dll[0] | 0x20202020) == 'nrek' && 
+        (dll[1] | 0x20202020) == '23le') break;
     imp++;
   } 
   // now locate GetProcAddress

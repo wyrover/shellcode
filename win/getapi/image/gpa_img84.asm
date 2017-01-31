@@ -28,17 +28,17 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
 
-    bits 32
+    bits 64
 
-; returns pointer to GetProcAddress in ebp
+; returns pointer to GetProcAddress in rbp
 locate_gpa:
-    push   30h
-    pop    edx
-    mov    ebx, [fs:edx]      ; ebx = peb
-    mov    ebx, [ebx+08h]     ; ebx = ImageBaseAddress
-    add    edx, [ebx+3ch]     ; eax = e_lfanew
-    mov    esi, [ebx+edx+50h]
-    add    esi, ebx
+    push   60h
+    pop    rdx
+    mov    rbx, [gs:rdx]      ; rbx = peb
+    mov    rbx, [rbx+08h]     ; rbx = ImageBaseAddress
+    add    edx, [rbx+3ch]     ; edx += e_lfanew
+    mov    esi, [rbx+rdx+30h] ; esi = import directory
+    add    rsi, rbx
 imp_l0:
     lodsd                   ; OriginalFirstThunk +00h
     xchg   eax, ebp         ; store in ebp
@@ -49,31 +49,31 @@ imp_l0:
     lodsd                   ; FirstThunk         +10h 
     xchg   eax, edi         ; store in edi
     
-    mov    eax, [edx+ebx]
-    or     eax, 20202020h   ; convert to lowercase
+    mov    rax, [rdx+rbx]
+    or     eax, 20202020h   ; convert to lowercase 
     cmp    eax, 'kern'
     jnz    imp_l0
     
-    mov    eax, [edx+ebx+4]
-    or     eax, 20202020h   ; convert to lowercase
+    shr    rax, 32
+    or     eax, 20202020h   ; convert to lowercase 
     cmp    eax, 'el32'
     jnz    imp_l0
-    
-    lea    esi, [ebp+ebx]
-    add    edi, ebx
+
+    lea    rsi, [rbp+rbx]
+    add    rdi, rbx
 imp_l1:
-    lodsd                   ; eax = oft->u1.Function, oft++;
-    scasd                   ; ft++;
-    test   eax, eax
+    lodsq                   ; eax = oft->u1.Function, oft++;
+    scasq                   ; ft++;
+    test   rax, rax
     jz     imp_l0           ; get next module if zero
     js     imp_l1           ; skip ordinals 
     
-    cmp    dword[eax+ebx+2], 'GetP'
+    cmp    dword[rax+rbx+2], 'GetP'
     jnz    imp_l1
     
-    cmp    dword[eax+ebx+10], 'ddre'
+    cmp    dword[rax+rbx+10], 'ddre'
     jnz    imp_l1
     
-    mov    ebp, [edi-4]     ; ebp = ft->u1.Function
+    mov    rbp, [rdi-8]     ; ebp = ft->u1.Function
     ret
     
