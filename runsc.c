@@ -538,20 +538,7 @@ void parse_args (args_t *p, int argc, char *argv[])
 {
   int  i;
   char opt;
-  
-  struct sockaddr_in sa;
-  
-  memset(&sa, 0, sizeof(sa));
-  
-  sa.sin_family      = AF_INET;
-  sa.sin_addr.s_addr = inet_addr("127.0.0.1");
-  sa.sin_port        = htons(1234);
-  
-  printf("\nsizeof(sa) = %i", sizeof(sa));
-  printf("\n%lx", ((uint32_t*)&sa)[0]);
-  printf("\n%lx", ((uint32_t*)&sa)[1]);
-  return 0;
-  
+
   // for each argument
   for (i=1; i<argc; i++)
   {
@@ -615,6 +602,7 @@ int main (int argc, char *argv[])
   WSADATA wsa;
   
   //Wow64DisableWow64FsRedirection (&OldValue);
+  LoadLibraryA("ws2_32");
   WSAStartup(MAKEWORD(2,0), &wsa);
   #endif
   

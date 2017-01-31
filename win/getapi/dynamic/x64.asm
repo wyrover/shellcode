@@ -112,10 +112,7 @@ imp_l1:
     scasq
     test   eax, eax     ; if (oft->u1.Function == 0)
     jz     imp_l0       ; goto imp_l0
-    
-    cqo
-    inc    edx     ; will be zero if rax >= 0x8000000000000000
-    jz     imp_l1       ; oft->u1.Ordinal & IMAGE_ORDINAL_FLAG
+    js     imp_l1       ; oft->u1.Ordinal & IMAGE_ORDINAL_FLAG
     
     lea    rax, [rax+rbx+2] ; ibn->Name
     call   crc32c       ; get hash of API string    

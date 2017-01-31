@@ -117,10 +117,7 @@ imp_l1:
     scasd                 ; ft++;
     test   eax, eax       ; if (oft->u1.Function == 0)
     jz     imp_l0         ; goto imp_l0
-
-    cdq
-    inc    edx            ; will be zero if eax >= 0x80000000
-    jz     imp_l1         ; oft->u1.Ordinal & IMAGE_ORDINAL_FLAG
+    js     imp_l1         ; oft->u1.Ordinal & IMAGE_ORDINAL_FLAG
 
     lea    eax, [eax+ebx+2] ; oft->Name_
     call   crc32c           ; get crc of API string
