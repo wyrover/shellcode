@@ -34,6 +34,28 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef _MSC_VER
+#ifdef __i386__
+/* for x86 only */
+unsigned long __readfsdword(unsigned long Offset)
+{
+   unsigned long ret;
+   __asm__ volatile ("movl	%%fs:%1,%0"
+     : "=r" (ret) ,"=m" ((*(volatile long *) Offset)));
+   return ret;
+}
+#else
+/* for __x86_64 only */
+unsigned __int64 __readgsqword(unsigned long Offset)
+{
+   void *ret;
+   __asm__ volatile ("movq	%%gs:%1,%0"
+     : "=r" (ret) ,"=m" ((*(volatile long *) (unsigned __int64) Offset)));
+   return (unsigned __int64) ret;
+}
+#endif
+#endif
+
 #define RVA2VA(type, base, rva) (type)((ULONG_PTR) base + rva)
 
 typedef void *PPS_POST_PROCESS_INIT_ROUTINE;
@@ -44,12 +66,6 @@ typedef struct _LSA_UNICODE_STRING {
   PWSTR  Buffer;
 } LSA_UNICODE_STRING, *PLSA_UNICODE_STRING, UNICODE_STRING, *PUNICODE_STRING;
 
-typedef struct _PEB_LDR_DATA {
-  BYTE       Reserved1[8];
-  PVOID      Reserved2[3];
-  LIST_ENTRY InMemoryOrderModuleList;
-} PEB_LDR_DATA, *PPEB_LDR_DATA;
-
 typedef struct _RTL_USER_PROCESS_PARAMETERS {
   BYTE           Reserved1[16];
   PVOID          Reserved2[10];
@@ -57,8 +73,29 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
   UNICODE_STRING CommandLine;
 } RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
-// taken from structure defined by rewolf
+// PEB defined by rewolf
 // http://blog.rewolf.pl/blog/?p=573
+typedef struct _PEB_LDR_DATA {
+  ULONG      Length;
+  BOOL       Initialized;
+  PVOID      SsHandle;
+  LIST_ENTRY InLoadOrderModuleList;
+  LIST_ENTRY InMemoryOrderModuleList;
+  LIST_ENTRY InInitializationOrderModuleList;
+} PEB_LDR_DATA, *PPEB_LDR_DATA;
+
+typedef struct _LDR_DATA_TABLE_ENTRY
+{
+  LIST_ENTRY     InLoadOrderLinks;
+  LIST_ENTRY     InMemoryOrderLinks;
+  LIST_ENTRY     InInitializationOrderLinks;
+  PVOID          DllBase;
+  PVOID          EntryPoint;
+  ULONG          SizeOfImage;
+  UNICODE_STRING FullDllName;
+  UNICODE_STRING BaseDllName;
+} LDR_DATA_TABLE_ENTRY, *PLDR_DATA_TABLE_ENTRY;
+
 typedef struct _PEB {
   BYTE                         InheritedAddressSpace;
   BYTE                         ReadImageFileExecOptions;
@@ -142,27 +179,6 @@ typedef struct _PEB {
 	LPVOID                       SystemAssemblyStorageMap;
 	LPVOID                       MinimumStackCommit;  
 } PEB, *PPEB;
-
-typedef struct _MY_PEB_LDR_DATA {
-  ULONG      Length;
-  BOOL       Initialized;
-  PVOID      SsHandle;
-  LIST_ENTRY InLoadOrderModuleList;
-  LIST_ENTRY InMemoryOrderModuleList;
-  LIST_ENTRY InInitializationOrderModuleList;
-} MY_PEB_LDR_DATA, *PMY_PEB_LDR_DATA;
-
-typedef struct _MY_LDR_DATA_TABLE_ENTRY
-{
-  LIST_ENTRY     InLoadOrderLinks;
-  LIST_ENTRY     InMemoryOrderLinks;
-  LIST_ENTRY     InInitializationOrderLinks;
-  PVOID          DllBase;
-  PVOID          EntryPoint;
-  ULONG          SizeOfImage;
-  UNICODE_STRING FullDllName;
-  UNICODE_STRING BaseDllName;
-} MY_LDR_DATA_TABLE_ENTRY, *PMY_LDR_DATA_TABLE_ENTRY;
 
 #ifdef ASM
 #define get_api(x) get_apix (x);

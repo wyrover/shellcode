@@ -29,28 +29,6 @@
 
 #include "getapi.h"
   
-#ifndef _MSC_VER
-#ifdef __i386__
-/* for x86 only */
-unsigned long __readfsdword(unsigned long Offset)
-{
-   unsigned long ret;
-   __asm__ volatile ("movl	%%fs:%1,%0"
-     : "=r" (ret) ,"=m" ((*(volatile long *) Offset)));
-   return ret;
-}
-#else
-/* for __x86_64 only */
-unsigned __int64 __readgsqword(unsigned long Offset)
-{
-   void *ret;
-   __asm__ volatile ("movq	%%gs:%1,%0"
-     : "=r" (ret) ,"=m" ((*(volatile long *) (unsigned __int64) Offset)));
-   return (unsigned __int64) ret;
-}
-#endif
-#endif
-  
 // converts string to lowercase
 uint32_t crc32c(const char *s)
 {
@@ -118,7 +96,7 @@ LPVOID search_exp(LPVOID base, DWORD hash)
 
 LPVOID search_imp(LPVOID base, DWORD hash)
 {
-  DWORD                    api_h, dll_h, i, rva;
+  DWORD                    dll_h, i, rva;
   PIMAGE_IMPORT_DESCRIPTOR imp;
   PIMAGE_THUNK_DATA        oft, ft;
   PIMAGE_IMPORT_BY_NAME    ibn;
@@ -161,7 +139,7 @@ LPVOID search_imp(LPVOID base, DWORD hash)
       rva = oft->u1.AddressOfData;
       ibn = (PIMAGE_IMPORT_BY_NAME)RVA2VA(ULONG_PTR, base, rva);
       
-      if ((crc32c(ibn->Name) + dll_h) == hash) {
+      if ((crc32c((char*)ibn->Name) + dll_h) == hash) {
         api_adr = (LPVOID)ft->u1.Function;
         break;
       }
@@ -177,10 +155,10 @@ LPVOID search_imp(LPVOID base, DWORD hash)
  ************************************************/
 LPVOID get_api (DWORD dwHash)
 {
-  PPEB                     peb;
-  PMY_PEB_LDR_DATA         ldr;
-  PMY_LDR_DATA_TABLE_ENTRY dte;
-  LPVOID                   api_adr=NULL;
+  PPEB                  peb;
+  PPEB_LDR_DATA         ldr;
+  PLDR_DATA_TABLE_ENTRY dte;
+  LPVOID                api_adr=NULL;
   
 #if defined(_WIN64)
   peb = (PPEB) __readgsqword(0x60);
@@ -188,12 +166,12 @@ LPVOID get_api (DWORD dwHash)
   peb = (PPEB) __readfsdword(0x30);
 #endif
 
-  ldr = (PMY_PEB_LDR_DATA)peb->Ldr;
+  ldr = (PPEB_LDR_DATA)peb->Ldr;
   
   // for each DLL loaded
-  for (dte=(PMY_LDR_DATA_TABLE_ENTRY)ldr->InLoadOrderModuleList.Flink;
+  for (dte=(PLDR_DATA_TABLE_ENTRY)ldr->InLoadOrderModuleList.Flink;
        dte->DllBase != NULL && api_adr == NULL; 
-       dte=(PMY_LDR_DATA_TABLE_ENTRY)dte->InLoadOrderLinks.Flink)
+       dte=(PLDR_DATA_TABLE_ENTRY)dte->InLoadOrderLinks.Flink)
   {
 #ifdef IMPORT    
     api_adr=search_imp(dte->DllBase, dwHash);
@@ -228,14 +206,16 @@ int main(int argc, char *argv[])
     // then try again
     p = get_api(h);
   }
-  printf("\n%08X = crc-32c(\"%s\")"
-         "\n%08X = crc-32c(\"%s\")"
-         "\n%08X = hash to find"
+  printf("\n%08lX = crc-32c(\"%s\")"
+         "\n%08lX = crc-32c(\"%s\")"
+         "\n%08lX = hash to find"
          "\n%p = Address of \"%s\"\n", 
       dll_h, argv[1], 
       api_h, argv[2],
       h,
       p, argv[2]);
+      
+  return 0;    
 }
 #endif
 
