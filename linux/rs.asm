@@ -34,6 +34,8 @@
 
     bits    32
     
+    int3
+    
     ; sa.sin_family = AF_INET;
     ; sa.sin_addr   = inet_addr("127.0.0.1");
     ; sa.sin_port   = htons(1234);
