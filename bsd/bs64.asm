@@ -28,7 +28,7 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
 
-; 76 byte bind shell
+; 80 byte bind shell
 ; x64 versions of freebsd + openbsd
 ; odzhan
 
