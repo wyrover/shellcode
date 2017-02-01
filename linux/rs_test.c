@@ -158,10 +158,10 @@ int main(int argc, char *argv[])
   if (port<0 || port>65535) {
     printf ("\ninvalid port specified");
   }
-  port=htons(port);
+  port = htons(port);
   // invert both to hide any null bytes.
   // there's obviously no rigorous checking here
-  ip =~ip;
+  ip   = ~ip;
   port = ~port;
   
   xcode (RS, RS_SIZE, ip, port);

