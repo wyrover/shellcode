@@ -113,7 +113,7 @@ char RS[] = {
   /* 0081 */ "\xcd\x80"                     /* int 0x80                        */
 };
 
-void xcode(char *s, int len, in_addr_t *ip, int *port)
+void xcode(char *s, int len, uint32_t *ip, uint16_t *port)
 {
   void *bin;
 
@@ -133,8 +133,8 @@ void xcode(char *s, int len, in_addr_t *ip, int *port)
 
 int main(void)
 {
-  in_addr_t ip   = 0;
-  int       port = 0;
+  uint32_t ip   = 0;
+  int      port = 0;
   
   if (argc!=3) {
     printf ("\nrs_test <ip> <port>\n");
