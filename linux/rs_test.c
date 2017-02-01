@@ -118,7 +118,7 @@ void bin2file(void *p, int len)
   FILE *out = fopen("rs.bin", "wb");
   if (out!= NULL)
   {
-    fwrite(p, len, 1, out);
+    fwrite(p, 1, len, out);
     fclose(out);
   }
 }
@@ -157,10 +157,11 @@ int main(int argc, char *argv[])
   
   if (port<0 || port>65535) {
     printf ("\ninvalid port specified");
+    return 0;
   }
   port = htons(port);
   // invert both to hide any null bytes.
-  // there's obviously no rigorous checking here
+  // obviously no rigorous checking here
   ip   = ~ip;
   port = ~port;
   

