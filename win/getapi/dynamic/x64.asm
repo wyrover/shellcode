@@ -110,7 +110,7 @@ imp_l0:
 imp_l1:
     lodsq               ; oft->u1.Function
     scasq
-    test   eax, eax     ; if (oft->u1.Function == 0)
+    test   rax, rax     ; if (oft->u1.Function == 0)
     jz     imp_l0       ; goto imp_l0
     js     imp_l1       ; oft->u1.Ordinal & IMAGE_ORDINAL_FLAG
     

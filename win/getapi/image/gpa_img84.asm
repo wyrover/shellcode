@@ -35,7 +35,7 @@ locate_gpa:
     push   60h
     pop    rdx
     mov    rbx, [gs:rdx]      ; rbx = peb
-    mov    rbx, [rbx+08h]     ; rbx = ImageBaseAddress
+    mov    rbx, [rbx+10h]     ; rbx = ImageBaseAddress
     add    edx, [rbx+3ch]     ; edx += e_lfanew
     mov    esi, [rbx+rdx+30h] ; esi = import directory
     add    rsi, rbx
