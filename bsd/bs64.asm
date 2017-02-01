@@ -32,7 +32,7 @@
 ; x64 versions of freebsd + openbsd
 ; odzhan
 
-    bits 64
+    bits    64
     
     mov     rax, ~0x00000000d2040200
     not     rax
