@@ -134,7 +134,7 @@ void xcode(char *s, int len, uint32_t *ip, uint16_t *port)
 int main(void)
 {
   uint32_t ip   = 0;
-  int      port = 0;
+  uint16_t port = 0;
   
   if (argc!=3) {
     printf ("\nrs_test <ip> <port>\n");
