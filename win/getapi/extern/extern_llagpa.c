@@ -29,7 +29,7 @@
 
 #include "getapi.h"
 
-#define DLL_HASH 0x8FECD63F // kernel32.dll
+#define DLL_HASH 0x42CCF79F // advapi32.dll
 
 LPVOID get_imp(PIMAGE_IMPORT_DESCRIPTOR imp, 
     LPVOID base, PDWORD api)
@@ -58,7 +58,7 @@ LPVOID get_imp(PIMAGE_IMPORT_DESCRIPTOR imp,
     name = (PDWORD)ibn->Name;
     
     // have we a match?
-    if (name[0] == api[0] && name[1] == api[1]) {
+    if (name[0] == api[0] && name[2] == api[2]) {
       api_adr = (LPVOID)ft->u1.Function;
       break;
     }
@@ -68,7 +68,7 @@ LPVOID get_imp(PIMAGE_IMPORT_DESCRIPTOR imp,
 
 int main(void)
 {
-  DWORD                    rva, hash;
+  DWORD                    rva, hash, i;
   PIMAGE_IMPORT_DESCRIPTOR imp;
   PIMAGE_DOS_HEADER        dos;
   PDWORD                   name;
@@ -77,10 +77,12 @@ int main(void)
   PIMAGE_NT_HEADERS        nt;
   PIMAGE_DATA_DIRECTORY    dir;
   LPVOID                   base, lla=NULL, gpa=NULL;
-  PCHAR                    dll;
+  PWCHAR                   dll;
   PPEB                     peb;
   PPEB_LDR_DATA            ldr;
   PLDR_DATA_TABLE_ENTRY    dte;
+  
+  LoadLibrary("advapi32.dll"); // only for testing
   
 #if defined(_WIN64)
   peb = (PPEB) __readgsqword(0x60);
@@ -90,41 +92,45 @@ int main(void)
 
   ldr = (PPEB_LDR_DATA)peb->Ldr;
   
-  // for each DLL loaded
+  // for each DLL in PEB
   for (dte=(PLDR_DATA_TABLE_ENTRY)ldr->InLoadOrderModuleList.Flink;
        dte->DllBase != NULL && gpa == NULL; 
        dte=(PLDR_DATA_TABLE_ENTRY)dte->InLoadOrderLinks.Flink)
   {
-    base = dte->DllBase;
-    dos  = (PIMAGE_DOS_HEADER)base;
-    nt   = RVA2VA(PIMAGE_NT_HEADERS, base, dos->e_lfanew);
-    dir  = (PIMAGE_DATA_DIRECTORY)nt->OptionalHeader.DataDirectory;
-    rva  = dir[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;  
-    imp  = (PIMAGE_IMPORT_DESCRIPTOR) RVA2VA(ULONG_PTR, base, rva);
-  
-    // locate the dll by hash
-    for (;;imp++) 
-    {
-      rva = imp->Name;
-      if (rva==0) {
-        break;
-      }
-      dll = RVA2VA(PCHAR, base, rva);
-      
-      for (hash=0; *dll; dll++) {
-        hash = ROTR32(hash, 13); 
-        hash += *dll | 0x20;  
-      }
+    // hash the DLL name
+    dll = dte->BaseDllName.Buffer;
 
-      // is this the DLL we need?      
-      if (hash == DLL_HASH) 
-      { 
-        // now locate GetProcAddress and LoadLibraryA
-        lla = get_imp(imp, base, (PDWORD)"LoadLibraryA");
-        gpa = get_imp(imp, base, (PDWORD)"GetProcAddress");
+    for (hash=0, i=0; i<dte->BaseDllName.Length/2; i++) {
+      hash = ROTR32(hash, 13); 
+      hash += dll[i] | 0x20;  
+    }
+    // is this the target DLL?
+    if (hash == DLL_HASH)
+    {
+      base = dte->DllBase;
+      dos  = (PIMAGE_DOS_HEADER)base;
+      nt   = RVA2VA(PIMAGE_NT_HEADERS, base, dos->e_lfanew);
+      dir  = (PIMAGE_DATA_DIRECTORY)nt->OptionalHeader.DataDirectory;
+      rva  = dir[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;  
+      imp  = (PIMAGE_IMPORT_DESCRIPTOR) RVA2VA(ULONG_PTR, base, rva);
+    
+      // locate kernel32.dll descriptor
+      for (;;imp++) 
+      {
+        if (imp->Name==0) break;
+        name = RVA2VA(PDWORD, base, imp->Name);
+        
+        if ((name[0] | 0x20202020) == 'nrek' && 
+            (name[1] | 0x20202020) == '23le')
+        {        
+          // locate GetProcAddress and LoadLibraryA
+          lla = get_imp(imp, base, (PDWORD)"LoadLibraryA");
+          gpa = get_imp(imp, base, (PDWORD)"GetProcAddress");
+          break;
+        }
       }
     }
-  }  
+  }    
   printf ("\nGetProcAddress : %p"
           "\nLoadLibraryA   : %p\n", gpa, lla);
           

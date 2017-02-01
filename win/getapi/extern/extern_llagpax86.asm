@@ -30,52 +30,114 @@
 
     bits 32
 
+struc pushad_t
+  _edi resd 1
+  _esi resd 1
+  _ebp resd 1
+  _esp resd 1
+  _ebx resd 1
+  _edx resd 1
+  _ecx resd 1
+  _eax resd 1
+  .size:
+endstruc
+
+; macro that converts string to lowercase 
+%macro cmpms 1.nolist
+  %assign %%h 0  
+  %strlen %%len %1
+  %assign %%i 1
+  
+  %rep %%len
+    %substr %%c %1 %%i
+    %assign %%h ((%%h << 13) & 0FFFFFFFFh) | (%%h >> (32-13))
+    %assign %%c (%%c | 0x20)    
+    %assign %%h ((%%h + %%c) & 0FFFFFFFFh)
+    %assign %%i (%%i+1)
+  %endrep
+  db 081h, 0fah
+  dd %%h
+%endmacro
+
 ; returns    
 ;   ebx = pointer to LoadLibraryA    
 ;   ebp = pointer to GetProcAddress    
-get_lla_gpa:
-_get_lla_gpa:
+extern_llagpax86:
+_extern_llagpax86:
+int3
+    pushad
     push   30h
     pop    edx
-    mov    ebx, [fs:edx]     ; ebx = peb
-    mov    ebx, [ebx+08h]    ; ebx = ImageBaseAddress
-    add    edx, [ebx+3ch]    ; eax = e_lfanew
-    mov    esi, [ebx+edx+50h]
-    add    esi, ebx
+
+    mov    esi, [fs:edx]  ; eax = (PPEB) __readfsdword(0x30);
+    mov    esi, [esi+0ch] ; eax = (PMY_PEB_LDR_DATA)peb->Ldr
+    mov    edi, [esi+0ch] ; edi = ldr->InLoadOrderModuleList.Flink
+    jmp    gapi_l1
+gapi_l0:
+    pushad
+    ; edx += IMAGE_DOS_HEADER.e_lfanew
+    mov    edx, [ebx+3ch]        
+    ; ebp = IMAGE_DATA_DIRECTORY.VirtualAddress
+    mov    ebp, [ebx+edx+50h]
+    test   ebp, ebp
+    jz     imp_l2
+    
+    add    ebp, ebx
 imp_l0:
-    lodsd                    ; OriginalFirstThunk +00h
-    xchg   eax, ebp          ; store in ebp
-    lodsd                    ; TimeDateStamp      +04h
-    lodsd                    ; ForwarderChain     +08h
-    lodsd                    ; Name               +0Ch
-    xchg   eax, edx          ; store in edx
-    lodsd                    ; FirstThunk         +10h 
-    xchg   eax, edi          ; store in edi
+    mov    esi, ebp      ; esi = current descriptor
+    lodsd                ; OriginalFirstThunk +00h
+    xchg   eax, edx      ; store in edx
+    lodsd                ; TimeDateStamp      +04h
+    lodsd                ; ForwarderChain     +08h
+    lodsd                ; Name               +0Ch
+    test   eax, eax
+    jz     imp_l2        ; if (Name == 0) goto imp_l2;
+    add    eax, ebx
     
-    mov    eax, [edx+ebx]
-    or     eax, 20202020h    ; convert to lowercase
-    cmp    eax, 'kern'
-    jnz    imp_l0
-    
-    mov    eax, [edx+ebx+4]
-    or     eax, 20202020h    ; convert to lowercase
-    cmp    eax, 'el32'
+    ; hash the dll name
+    pushad
+    xchg   eax, esi      ; esi = s
+    xor    eax, eax      ; eax = 0
+    cdq                  ; edx/hash = 0
+ms_l0:
+    lodsb                ; c = *s++ | 0x20;
+    test   al, al        ; if (c==0) break;
+    jz     ms_l3x    
+    ror    edx, 13
+    or     al, 0x20      ; c |= 0x20;
+    add    edx, eax      ; hash += c;
+    jmp    ms_l0
+ms_l3x:
+    cmpms  "kernel32.dll" ; change to target DLL
+    popad    
+    lodsd                 ; FirstThunk
+    mov    ebp, esi       ; ebp = next descriptor
     jnz    imp_l0
     
     ; locate GetProcAddress
     mov    ecx, 'GetP'
     mov    edx, 'ddre'
     call   get_imp
-    push   eax               ; save pointer 
+    test   eax, eax 
     
     ; locate LoadLibraryA
     mov    ecx, 'Load'
     mov    edx, 'aryA'
     call   get_imp
-    pop    ebp               ; ebp = GetProcAddress
-    xchg   eax, ebx          ; ebx = LoadLibraryA
-    ret
 
+imp_l2:
+    test   eax, eax
+    jnz    gapi_l2    
+gapi_l1:
+    mov    ebx, [edi+18h] ; ebx = dte->DllBase
+    test   ebx, ebx
+    jnz    gapi_l0
+    xchg   eax, ebx
+gapi_l2:
+    mov    [esp+_ebp], eax
+    popad
+    ret
+    
 get_imp:
     push   esi
     push   edi
@@ -95,7 +157,7 @@ gi_l0:
     jnz    gi_l0
     
     mov    eax, [edi-4]       ; eax = ft->u1.Function
-gi_l1: 
+gi_l1:
     pop    edi
     pop    esi
     ret    

@@ -32,6 +32,7 @@
 
 ; returns pointer to GetProcAddress in rbp
 locate_gpa:
+int3
     push   60h
     pop    rdx
     mov    rbx, [gs:rdx]      ; rbx = peb
