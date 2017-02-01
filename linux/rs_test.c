@@ -131,9 +131,6 @@ void xcode(char *s, int len, uint32_t ip, int16_t port)
       PROT_EXEC | PROT_WRITE | PROT_READ, 
       MAP_ANON  | MAP_PRIVATE, -1, 0);  
 
-  fprintf (stdout, "\n%08lX - %02X", ip, port);
-  fflush(stdout);
-  
   memcpy(p, s, len);
   memcpy((void*)&p[3], &port, 2); // set the port  
   memcpy((void*)&p[6], &ip, 4);     // set the ip
@@ -161,6 +158,7 @@ int main(int argc, char *argv[])
   if (port<0 || port>65535) {
     printf ("\ninvalid port specified");
   }
+  port=htons(port);
   // invert both to hide any null bytes.
   // there's no rigorous checking here obviously
   ip =~ip;
