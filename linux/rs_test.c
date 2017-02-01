@@ -133,7 +133,7 @@ void xcode(char *s, int len, uint32_t ip, int16_t port)
 
   memcpy(p, s, len);
   memcpy((void*)&p[3], &port, 2); // set the port  
-  memcpy((void*)&p[6], &ip, 4);     // set the ip
+  memcpy((void*)&p[6], &ip, 4);   // set the ip
   
   bin2file(p, len);
   
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
   }
   port=htons(port);
   // invert both to hide any null bytes.
-  // there's no rigorous checking here obviously
+  // there's obviously no rigorous checking here
   ip =~ip;
   port = ~port;
   
