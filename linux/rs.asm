@@ -122,6 +122,7 @@ x86_dup2:
     int     0x80
     
 x84_execve:
+int3
     cdq                 ; edx = 0
     push    eax         ; '\0'
     push    eax         ; null space
