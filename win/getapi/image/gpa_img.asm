@@ -1,5 +1,5 @@
 ;
-;  Copyright © 2017 Odzhan. All Rights Reserved.
+;  Copyright © 2017 Joshua Pitts, Odzhan. All Rights Reserved.
 ;
 ;  Redistribution and use in source and binary forms, with or without
 ;  modification, are permitted provided that the following conditions are
@@ -70,7 +70,7 @@ imp_l1:
     test   eax, eax
     js     imp_l1           ; skip ordinals 
     
-    cmp    dword[eax+ebx+2], 'GetP'
+    cmp    dword[eax+ebx+ 2], 'GetP'
     jnz    imp_l1
     
     cmp    dword[eax+ebx+10], 'ddre'
