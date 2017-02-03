@@ -207,7 +207,7 @@ gapi_l0:
     test   rax, rax
     jnz    gapi_l2
     
-    mov    rdi, [rdi]     ; dte->InMemoryOrderLinks.Flink
+    mov    rdi, [rdi]     ; dte->InLoadOrderLinks.Flink
 gapi_l1:
     mov    rbx, [rdi+30h] ; dte->DllBase
     test   rbx, rbx

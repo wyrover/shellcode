@@ -32,11 +32,14 @@
 
 ; returns    
 ;   ebx = pointer to LoadLibraryA    
-;   ebp = pointer to GetProcAddress    
-get_lla_gpa:
-_get_lla_gpa:
+;   ebp = pointer to GetProcAddress
+
+    push   esi
+    push   edi
+    
     push   30h
     pop    edx
+    
     mov    ebx, [fs:edx]     ; ebx = peb
     mov    ebx, [ebx+08h]    ; ebx = ImageBaseAddress
     add    edx, [ebx+3ch]    ; eax = e_lfanew
@@ -74,6 +77,9 @@ imp_l0:
     call   get_imp
     pop    ebp               ; ebp = GetProcAddress
     xchg   eax, ebx          ; ebx = LoadLibraryA
+    
+    pop    edi
+    pop    esi
     ret
 
 get_imp:
@@ -85,7 +91,6 @@ gi_l0:
     lodsd                     ; eax = oft->u1.Function, oft++;
     scasd                     ; ft++;
     test   eax, eax
-    jz     gi_l1              ; get next module if zero
     js     gi_l0              ; skip ordinals 
     
     cmp    dword[eax+ebx+2], ecx

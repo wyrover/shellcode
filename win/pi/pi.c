@@ -32,7 +32,7 @@
 #include "pi.h"
 
 #if !defined (__GNUC__)
-#pragma comment (lib, "Shell32.lib")
+#pragma comment (lib, "shell32.lib")
 #pragma comment (lib, "advapi32.lib")
 #endif
 

@@ -57,32 +57,33 @@ int main(void)
   imp  = (PIMAGE_IMPORT_DESCRIPTOR) RVA2VA(ULONG_PTR, base, rva);
   
   // locate kernel32.dll
-  for (;;) {
-    dll   = RVA2VA(PDWORD, base, imp->Name);
-    if ((dll[0] | 0x20202020) == 'nrek' && 
-        (dll[1] | 0x20202020) == '23le') break;
-    imp++;
-  } 
-  // now locate GetProcAddress
-  rva   = imp->OriginalFirstThunk;
-  oft   = (PIMAGE_THUNK_DATA)RVA2VA(ULONG_PTR, base, rva);
-  
-  rva   = imp->FirstThunk;
-  ft    = (PIMAGE_THUNK_DATA)RVA2VA(ULONG_PTR, base, rva);
-    
-  for (gpa=NULL;; oft++, ft++) 
+  for (;imp->Name!=0;imp++) 
   {
-    rva  = oft->u1.AddressOfData;
-    ibn  = (PIMAGE_IMPORT_BY_NAME)RVA2VA(ULONG_PTR, base, rva);
-    name = (PDWORD)ibn->Name;
-    
-    // is this GetProcAddress?
-    if (name[0] == 'PteG' && name[2] == 'erdd') {
-      gpa = (LPVOID)ft->u1.Function;
-      break;
+    dll = RVA2VA(PDWORD, base, imp->Name);
+    if ((dll[0] | 0x20202020) == 'nrek' && 
+        (dll[1] | 0x20202020) == '23le')
+    { 
+      // now locate GetProcAddress
+      rva   = imp->OriginalFirstThunk;
+      oft   = (PIMAGE_THUNK_DATA)RVA2VA(ULONG_PTR, base, rva);
+      
+      rva   = imp->FirstThunk;
+      ft    = (PIMAGE_THUNK_DATA)RVA2VA(ULONG_PTR, base, rva);
+        
+      for (gpa=NULL;; oft++, ft++) 
+      {
+        rva  = oft->u1.AddressOfData;
+        ibn  = (PIMAGE_IMPORT_BY_NAME)RVA2VA(ULONG_PTR, base, rva);
+        name = (PDWORD)ibn->Name;
+        
+        // is this GetProcAddress?
+        if (name[0] == 'PteG' && name[2] == 'erdd') {
+          gpa = (LPVOID)ft->u1.Function;
+          break;
+        }
+      }
     }
-  }
-  
+  }  
   printf ("\nGetProcAddress : %p\n", gpa);
   return 0;
 }

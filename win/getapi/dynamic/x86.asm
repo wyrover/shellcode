@@ -207,7 +207,7 @@ gapi_l0:
     test   eax, eax
     jnz    gapi_l2
 
-    mov    edi, [edi]     ; edi = dte->InMemoryOrderLinks.Flink
+    mov    edi, [edi]     ; edi = dte->InLoadOrderLinks.Flink
 gapi_l1:
     mov    ebx, [edi+18h] ; ebx = dte->DllBase
     test   ebx, ebx

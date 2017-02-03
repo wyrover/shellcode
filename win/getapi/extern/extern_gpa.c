@@ -81,9 +81,8 @@ int main(void)
       imp  = (PIMAGE_IMPORT_DESCRIPTOR) RVA2VA(ULONG_PTR, base, rva);
   
       // locate kernel32.dll
-      for (;;imp++) 
+      for (;imp->Name!=0;imp++) 
       {
-        if (imp->Name==0) break;
         name = RVA2VA(PDWORD, base, imp->Name);
         
         if ((name[0] | 0x20202020) == 'nrek' && 

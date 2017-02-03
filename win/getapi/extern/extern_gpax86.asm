@@ -50,45 +50,52 @@ endstruc
   
   %rep %%len
     %substr %%c %1 %%i
-    %assign %%h ((%%h << 13) & 0FFFFFFFFh) | (%%h >> (32-13))
+    %assign %%h ((%%h >> 13) & 0FFFFFFFFh) | (%%h << (32-13))
     %assign %%c (%%c | 0x20)    
     %assign %%h ((%%h + %%c) & 0FFFFFFFFh)
     %assign %%i (%%i+1)
   %endrep
+  ; cmp edx, hash  
   db 081h, 0fah
   dd %%h
 %endmacro
 
-; returns GetProcAddress in ebp
-extern_gpa:
-    int3
-    pushad
+; returns pointer to GetProcAddress in ebp
+    push   esi
+    push   edi
+    push   ebx
+    
     push   30h
     pop    edx
 
     mov    esi, [fs:edx]  ; eax = (PPEB) __readfsdword(0x30);
     mov    esi, [esi+0ch] ; eax = (PMY_PEB_LDR_DATA)peb->Ldr
     mov    edi, [esi+0ch] ; edi = ldr->InLoadOrderModuleList.Flink
-    jmp    gapi_l3
-gapi_l0:
+gapi_l0:    
+    mov    edi, [edi]     ; edi = dte->InLoadOrderLinks.Flink    
+    mov    ebx, [edi+18h] ; ebx = dte->DllBase
+gapi_l1:
+    push   edx 
     movzx  ecx, word[edi+44]  ; ecx = BaseDllName.Length
     mov    esi, [edi+48]      ; esi = BaseDllName.Buffer
     shr    ecx, 1
     xor    eax, eax
     cdq
-gapi_l1:
+gapi_l2:
     lodsw
     or     al, 0x20
     ror    edx, 13
     add    edx, eax
-    loop   gapi_l1
+    loop   gapi_l2
     ; target DLL?
     cmpms  "advapi32.dll"
-    jne    gapi_l2    
+    pop    edx
+    jne    gapi_l0    
    
+    ; we have target DLL, now search for kernel32.dll
+    ; in import directory
     ; edx += IMAGE_DOS_HEADER.e_lfanew
-    mov    edx, [ebx+3ch]
-    add    edx, [esp+_edx]   
+    add    edx, [ebx+3ch]  
     mov    esi, [ebx+edx+50h]
     add    esi, ebx
 imp_l0:
@@ -111,31 +118,25 @@ imp_l0:
     cmp    eax, 'el32'
     jnz    imp_l0
  
+    ; we have it, locate GetProcAddress
     lea    esi, [ebp+ebx]
     add    edi, ebx
 imp_l1:
     lodsd                   ; eax = oft->u1.Function, oft++;
     scasd                   ; ft++;
     test   eax, eax
-    jz     imp_l0           ; get next module if zero
     js     imp_l1           ; skip ordinals 
     
-    cmp    dword[eax+ebx+2], 'GetP'
+    cmp    dword[eax+ebx+ 2], 'GetP'
     jnz    imp_l1
     
     cmp    dword[eax+ebx+10], 'ddre'
     jnz    imp_l1
     
-    mov    eax, [edi-4]     ; ebp = ft->u1.Function
-    jmp    gapi_l4    
-gapi_l2:
-    mov    edi, [edi]     ; edi = dte->InMemoryOrderLinks.Flink
-gapi_l3:    
-    mov    ebx, [edi+18h] ; ebx = dte->DllBase
-    test   ebx, ebx
-    jnz    gapi_l0
-    xchg   eax, ebx
-gapi_l4:
-    mov    [esp+_ebp], eax
-    popad
+    mov    ebp, [edi-4]     ; ebp = ft->u1.Function
+    
+    pop    ebx
+    pop    edi
+    pop    esi
     ret
+    

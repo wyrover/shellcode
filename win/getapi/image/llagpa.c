@@ -89,15 +89,18 @@ int main(void)
   imp  = (PIMAGE_IMPORT_DESCRIPTOR) RVA2VA(ULONG_PTR, base, rva);
   
   // locate kernel32.dll
-  for (;;) {
-    dll   = RVA2VA(PDWORD, base, imp->Name);
+  for (;imp->Name!=0;imp++) 
+  {
+    dll = RVA2VA(PDWORD, base, imp->Name);
     if ((dll[0] | 0x20202020) == 'nrek' && 
-        (dll[1] | 0x20202020) == '23le') break;
-    imp++;
-  } 
-  // now locate GetProcAddress and LoadLibraryA
-  lla = get_imp(imp, base, (PDWORD)"LoadLibraryA");
-  gpa = get_imp(imp, base, (PDWORD)"GetProcAddress");
+        (dll[1] | 0x20202020) == '23le')
+    { 
+      // now locate GetProcAddress and LoadLibraryA
+      lla = get_imp(imp, base, (PDWORD)"LoadLibraryA");
+      gpa = get_imp(imp, base, (PDWORD)"GetProcAddress");
+      break;
+    }
+  }
   
   printf ("\nGetProcAddress : %p"
           "\nLoadLibraryA   : %p\n", gpa, lla);

@@ -31,7 +31,10 @@
     bits 32
 
 ; returns pointer to GetProcAddress in ebp
-locate_gpa:
+    push   esi
+    push   edi
+    push   ebx
+    
     push   30h
     pop    edx
     mov    ebx, [fs:edx]      ; ebx = peb
@@ -45,27 +48,26 @@ imp_l0:
     lodsd                   ; TimeDateStamp      +04h
     lodsd                   ; ForwarderChain     +08h
     lodsd                   ; Name               +0Ch
-    xchg   eax, edx         ; store in edx
+    xchg   eax, edx
     lodsd                   ; FirstThunk         +10h 
     xchg   eax, edi         ; store in edi
     
     mov    eax, [edx+ebx]
     or     eax, 20202020h   ; convert to lowercase
     cmp    eax, 'kern'
-    jnz    imp_l0
+    jnz    imp_l0           ; get next DLL if not equal
     
     mov    eax, [edx+ebx+4]
     or     eax, 20202020h   ; convert to lowercase
     cmp    eax, 'el32'
-    jnz    imp_l0
+    jnz    imp_l0           ; get next DLL if not equal
     
-    lea    esi, [ebp+ebx]
-    add    edi, ebx
+    lea    esi, [ebp+ebx]   ; esi = OriginalFirstThunk
+    add    edi, ebx         ; edi = FirstThunk
 imp_l1:
     lodsd                   ; eax = oft->u1.Function, oft++;
     scasd                   ; ft++;
     test   eax, eax
-    jz     imp_l0           ; get next module if zero
     js     imp_l1           ; skip ordinals 
     
     cmp    dword[eax+ebx+2], 'GetP'
@@ -75,5 +77,9 @@ imp_l1:
     jnz    imp_l1
     
     mov    ebp, [edi-4]     ; ebp = ft->u1.Function
+    
+    pop    ebx
+    pop    edi
+    pop    esi
     ret
     

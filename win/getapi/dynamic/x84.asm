@@ -186,7 +186,7 @@ gapi_l1x:
     jnz    gapi_l3x
     
     dec    eax
-    mov    edi, [edi] ; dte->InMemoryOrderLinks.Flink
+    mov    edi, [edi] ; dte->InLoadOrderLinks.Flink
 gapi_l2x:
     dec    eax
     mov    ebp, [edi+ebx] ; dte->DllBase

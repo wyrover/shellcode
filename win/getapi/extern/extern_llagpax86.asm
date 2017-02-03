@@ -50,94 +50,93 @@ endstruc
   
   %rep %%len
     %substr %%c %1 %%i
-    %assign %%h ((%%h << 13) & 0FFFFFFFFh) | (%%h >> (32-13))
+    %assign %%h ((%%h >> 13) & 0FFFFFFFFh) | (%%h << (32-13))
     %assign %%c (%%c | 0x20)    
     %assign %%h ((%%h + %%c) & 0FFFFFFFFh)
     %assign %%i (%%i+1)
   %endrep
+  ; cmp edx, hash
   db 081h, 0fah
   dd %%h
 %endmacro
 
 ; returns    
 ;   ebx = pointer to LoadLibraryA    
-;   ebp = pointer to GetProcAddress    
-extern_llagpax86:
-_extern_llagpax86:
-int3
-    pushad
+;   ebp = pointer to GetProcAddress
+    push   esi
+    push   edi
+    
     push   30h
     pop    edx
 
     mov    esi, [fs:edx]  ; eax = (PPEB) __readfsdword(0x30);
     mov    esi, [esi+0ch] ; eax = (PMY_PEB_LDR_DATA)peb->Ldr
     mov    edi, [esi+0ch] ; edi = ldr->InLoadOrderModuleList.Flink
-    jmp    gapi_l1
 gapi_l0:
-    pushad
-    ; edx += IMAGE_DOS_HEADER.e_lfanew
-    mov    edx, [ebx+3ch]        
-    ; ebp = IMAGE_DATA_DIRECTORY.VirtualAddress
-    mov    ebp, [ebx+edx+50h]
-    test   ebp, ebp
-    jz     imp_l2
-    
-    add    ebp, ebx
-imp_l0:
-    mov    esi, ebp      ; esi = current descriptor
-    lodsd                ; OriginalFirstThunk +00h
-    xchg   eax, edx      ; store in edx
-    lodsd                ; TimeDateStamp      +04h
-    lodsd                ; ForwarderChain     +08h
-    lodsd                ; Name               +0Ch
-    test   eax, eax
-    jz     imp_l2        ; if (Name == 0) goto imp_l2;
-    add    eax, ebx
-    
-    ; hash the dll name
-    pushad
-    xchg   eax, esi      ; esi = s
-    xor    eax, eax      ; eax = 0
-    cdq                  ; edx/hash = 0
-ms_l0:
-    lodsb                ; c = *s++ | 0x20;
-    test   al, al        ; if (c==0) break;
-    jz     ms_l3x    
+    mov    edi, [edi]     ; edi = dte->InLoadOrderLinks.Flink  
+    mov    ebx, [edi+18h] ; ebx = dte->DllBase
+gapi_l1:
+    push   edx 
+    movzx  ecx, word[edi+44]  ; ecx = BaseDllName.Length
+    mov    esi, [edi+48]      ; esi = BaseDllName.Buffer
+    shr    ecx, 1
+    xor    eax, eax
+    cdq
+gapi_l2:
+    lodsw
+    or     al, 0x20
     ror    edx, 13
-    or     al, 0x20      ; c |= 0x20;
-    add    edx, eax      ; hash += c;
-    jmp    ms_l0
-ms_l3x:
-    cmpms  "kernel32.dll" ; change to target DLL
-    popad    
-    lodsd                 ; FirstThunk
-    mov    ebp, esi       ; ebp = next descriptor
+    add    edx, eax
+    loop   gapi_l2
+    ; target DLL?
+    cmpms  "advapi32.dll"
+    pop    edx
+    jne    gapi_l0    
+   
+    ; we have target DLL, now search for kernel32.dll
+    ; in import directory
+    ; edx += IMAGE_DOS_HEADER.e_lfanew
+    add    edx, [ebx+3ch]  
+    mov    esi, [ebx+edx+50h]
+    add    esi, ebx
+imp_l0:
+    lodsd                   ; OriginalFirstThunk +00h
+    xchg   eax, ebp         ; store in ebp
+    lodsd                   ; TimeDateStamp      +04h
+    lodsd                   ; ForwarderChain     +08h
+    lodsd                   ; Name               +0Ch
+    xchg   eax, edx         ; store in edx
+    lodsd                   ; FirstThunk         +10h 
+    xchg   eax, edi         ; store in edi
+    
+    mov    eax, [edx+ebx]
+    or     eax, 20202020h   ; convert to lowercase
+    cmp    eax, 'kern'
     jnz    imp_l0
     
+    mov    eax, [edx+ebx+4]
+    or     eax, 20202020h   ; convert to lowercase
+    cmp    eax, 'el32'
+    jnz    imp_l0
+ 
     ; locate GetProcAddress
     mov    ecx, 'GetP'
     mov    edx, 'ddre'
     call   get_imp
-    test   eax, eax 
+    push   eax               ; save pointer 
     
     ; locate LoadLibraryA
     mov    ecx, 'Load'
     mov    edx, 'aryA'
     call   get_imp
-
-imp_l2:
-    test   eax, eax
-    jnz    gapi_l2    
-gapi_l1:
-    mov    ebx, [edi+18h] ; ebx = dte->DllBase
-    test   ebx, ebx
-    jnz    gapi_l0
-    xchg   eax, ebx
-gapi_l2:
-    mov    [esp+_ebp], eax
-    popad
-    ret
+    pop    ebp               ; ebp = GetProcAddress
+    xchg   eax, ebx          ; ebx = LoadLibraryA
     
+    pop    edi
+    pop    esi
+    ret
+
+    ; -------------
 get_imp:
     push   esi
     push   edi
