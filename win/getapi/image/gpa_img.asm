@@ -39,7 +39,7 @@
     pop    edx
     mov    ebx, [fs:edx]      ; ebx = peb
     mov    ebx, [ebx+08h]     ; ebx = ImageBaseAddress
-    add    edx, [ebx+3ch]     ; eax = e_lfanew
+    add    edx, [ebx+3ch]     ; edx += e_lfanew
     mov    esi, [ebx+edx+50h]
     add    esi, ebx
 imp_l0:

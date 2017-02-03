@@ -146,7 +146,6 @@ gi_l0:
     lodsd                     ; eax = oft->u1.Function, oft++;
     scasd                     ; ft++;
     test   eax, eax
-    jz     gi_l1              ; get next module if zero
     js     gi_l0              ; skip ordinals 
     
     cmp    dword[eax+ebx+2], ecx
