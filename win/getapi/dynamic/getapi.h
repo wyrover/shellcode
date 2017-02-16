@@ -100,7 +100,7 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
 typedef struct _PEB_LDR_DATA {
   ULONG      Length;
   BOOL       Initialized;
-  PVOID      SsHandle;
+  LPVOID     SsHandle;
   LIST_ENTRY InLoadOrderModuleList;
   LIST_ENTRY InMemoryOrderModuleList;
   LIST_ENTRY InInitializationOrderModuleList;
@@ -111,8 +111,8 @@ typedef struct _LDR_DATA_TABLE_ENTRY
   LIST_ENTRY     InLoadOrderLinks;
   LIST_ENTRY     InMemoryOrderLinks;
   LIST_ENTRY     InInitializationOrderLinks;
-  PVOID          DllBase;
-  PVOID          EntryPoint;
+  LPVOID         DllBase;
+  LPVOID         EntryPoint;
   ULONG          SizeOfImage;
   UNICODE_STRING FullDllName;
   UNICODE_STRING BaseDllName;
@@ -126,6 +126,7 @@ typedef struct _PEB {
 
   LPVOID                       Mutant;
 	LPVOID                       ImageBaseAddress;
+
 	PPEB_LDR_DATA                Ldr;
 	PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
 	LPVOID                       SubSystemData;

