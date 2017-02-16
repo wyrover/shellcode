@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
   port = atoi(argv[1]);
   
   if (port<0 || port>65535) {
-    printf ("\ninvalid port specified");
+    printf ("\ninvalid port specified\n");
     return 0;
   }
   port = htons(port);
