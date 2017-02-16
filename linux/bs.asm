@@ -111,7 +111,7 @@ x86_socket:
     pop     ecx         ; ecx = &args 
     int     0x80
 
-    xchg    eax, ebx    ; ebx = s
+    xchg    eax, edi    ; ebx = s
 
     ; step 2, bind to port 1234
     ; bind (s, &sa, sizeof(sa))
