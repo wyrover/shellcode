@@ -202,9 +202,16 @@ int main(int argc, char *argv[])
   // if not found
   if (p==NULL) {
     // load the module into memory
-    LoadLibrary(argv[1]);
+    if (LoadLibrary(argv[1])==NULL) {
+      printf ("\nUnable to load DLL module \"%s\"", argv[1]);
+      return 0;
+    }
     // then try again
     p = get_api(h);
+  }
+  if (p==NULL) {
+    printf ("\nUnable to locate API address \"%s\"", argv[2]);
+    return 0;
   }
   printf("\n%08lX = crc-32c(\"%s\")"
          "\n%08lX = crc-32c(\"%s\")"

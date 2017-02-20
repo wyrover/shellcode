@@ -42,7 +42,8 @@ struc pushad_t
   .size:
 endstruc
 
-; macro that converts string to lowercase 
+; macro that generates hash based on metasploit algorithm
+; converts string to lowercase
 %macro cmpms 1.nolist
   %assign %%h 0  
   %strlen %%len %1
