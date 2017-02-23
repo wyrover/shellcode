@@ -36,12 +36,12 @@
     ; step 1, create a socket
     ; socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     push    41
-    pop     rax
+    pop     rax     ; rax = sys_socket
     push    1
-    pop     rsi
+    pop     rsi     ; rsi = SOCK_STREAM
     push    2
-    pop     rdi
-    cdq
+    pop     rdi     ; rdi = AF_INET
+    cdq             ; rdx = IPPROTO_IP
     syscall
     
     xchg    eax, edi         ; edi=s
@@ -52,15 +52,15 @@
     not     rax
     push    rax
     push    rsp
-    pop     rsi
-    mov     dl, 16
-    mov     al, 49
+    pop     rsi      ; rsi = &sa 
+    mov     dl, 16   ; rdx = sizeof(sa) 
+    mov     al, 49   ; rax = sys_bind
     syscall
     
     ; step 3, listen
     ; listen(s, 0);
-    xchg    eax, esi
-    mov     al, 50
+    xor     esi, esi ; rsi = 0
+    mov     al, 50   ; rax = sys_listen
     syscall
     
     ; step 4, accept connections
