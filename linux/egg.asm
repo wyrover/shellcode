@@ -48,7 +48,7 @@ nxt_addr:
     syscall
     pop     rdi       ; restore rdi
     cmp     al, 0xF2
-    jnz     nxt_page  ; eax is zero if page is ok 
+    je      nxt_page  ; eax is zero if page is ok 
     
     int3
     ; put your own egg signature here
