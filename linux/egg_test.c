@@ -43,7 +43,7 @@
 #define SHX_SIZE 37
 
 // sig is 0xDEADCODE
-#define EGG_SIG "\xDE\xAD\xC0\xDE"
+#define EGG_SIG "\xDE\xC0\xAD\xDE"
 
 char SHX[] = {
   EGG_SIG
