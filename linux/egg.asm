@@ -33,7 +33,6 @@
 ;
     bits   64
       
-    int3  
     xor     edi, edi  ; rdi = 0
     mul     edi       ; rax = 0, rdx = 0
     xchg    eax, esi  ; rsi = F_OK
@@ -47,15 +46,16 @@ nxt_addr:
     pop     rax       ; rax = sys_access 
     syscall
     pop     rdi       ; restore rdi
-    cmp     al, 0xF2
+    cmp     al, 0xF2  ; -EFAULT means bad address
     je      nxt_page  ; eax is zero if page is ok 
     
-    int3
     ; put your own egg signature here
     mov     eax, 0xDEADC0DE
     scasd
     jne     nxt_addr
 
+    int3
+    
     scasd
     jne     nxt_addr
     
