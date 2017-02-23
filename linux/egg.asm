@@ -33,6 +33,7 @@
 ;
     bits   64
       
+    int3  
     xor     edi, edi  ; rdi = 0
     mul     edi       ; rax = 0, rdx = 0
     xchg    eax, esi  ; rsi = F_OK
