@@ -41,7 +41,7 @@ nxt_page:
     add     rdi, rdx  ; advance 4096 bytes
 nxt_addr:
     push    rdi
-    add     rdi, 4
+    add     rdi, 8
     push    21
     pop     rax       ; rax = sys_access 
     syscall

