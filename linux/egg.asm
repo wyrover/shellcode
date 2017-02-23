@@ -47,7 +47,7 @@ nxt_addr:
     pop     rax       ; rax = sys_access 
     syscall
     pop     rdi       ; restore rdi
-    test    eax, eax
+    cmp     al, 0xF2
     jnz     nxt_page  ; eax is zero if page is ok 
     
     int3
