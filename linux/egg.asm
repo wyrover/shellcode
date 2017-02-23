@@ -41,9 +41,12 @@
 nxt_page:
     add     rdi, rdx  ; advance 4096 bytes
 nxt_addr:
+    push    rdi
+    scasd             ; advance 4 bytes 
     push    21
     pop     rax       ; rax = sys_access 
     syscall
+    pop     rdi       ; restore rdi
     test    eax, eax
     jnz     nxt_page  ; eax is zero if page is ok 
     
