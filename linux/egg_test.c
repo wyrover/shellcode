@@ -161,7 +161,7 @@ void xcode(char *s, int len)
 int main(int argc, char *argv[])
 {
   uint8_t *sc=(uint8_t*)mmap (0, sizeof(BS), 
-      PROT_EXEC, MAP_ANON  | MAP_PRIVATE, -1, 0); 
+      PROT_EXEC | PROT_WRITE, MAP_ANON  | MAP_PRIVATE, -1, 0); 
       
   if (sc != NULL) {
     memcpy (sc, BS, sizeof(BS));    
