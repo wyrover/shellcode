@@ -27,7 +27,7 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
-    bits    32
+    bits   32
     
     mov    eax, ~0x00000000 & 0xFFFFFFFF
     mov    edx, ~0xD2040200 & 0xFFFFFFFF

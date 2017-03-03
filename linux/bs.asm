@@ -79,8 +79,7 @@
     
     ; step 3, listen
     ; listen(s, 0);
-    push    eax
-    pop     esi
+    xor     esi, esi
     mov     al, 50
     syscall
     

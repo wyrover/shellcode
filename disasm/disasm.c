@@ -1,5 +1,5 @@
 /**
-  Copyright © 2015 Odzhan. All Rights Reserved.
+  Copyright © 2015-2017 Odzhan. All Rights Reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
@@ -27,90 +27,180 @@
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
+#if defined(_WIN32) || defined(_WIN64)
+#define WINDOWS
+#endif
+  
+#ifdef _MSC_VER
+#pragma warning(disable : 4005)
+#endif
+  
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+
 #include <sys/stat.h>
 
-#include "udis86.h"
+#ifdef WINDOWS
+#include <windows.h>
+#include <shlwapi.h>
+#else
+#include <sys/mman.h> 
+#endif
+
+//#include <inttypes.h>
+
+#include <capstone/capstone.h>
+#include <capstone/platform.h>
 
 #define ASM_OUT 0
 #define C_OUT   1
 
-#pragma comment (lib, "udis86.lib")
+#pragma comment (lib, "shlwapi.lib")
+#pragma comment (lib, "user32.lib")
+#pragma comment (lib, "capstone\\capstone.lib")
  
+// output format options 
+typedef struct opt_fmt_t {
+  int n;
+  char *s;
+} format_t;
+
+format_t opt_formats[]=
+{{ASM_OUT, "asm"},
+ {C_OUT,   "c"}};
+ 
+// syntax options
+typedef struct opt_syntax_t {
+  int n;
+  char *s;
+} syntax_t;
+
+syntax_t opt_syntax[]=
+{{CS_OPT_SYNTAX_INTEL, "intel"},
+ {CS_OPT_SYNTAX_ATT,   "att"}};
+  
+// cpu mode options 
+typedef struct opt_mode_t {
+  int n;
+  char *s;
+} mode_t;
+  
+mode_t opt_mode[]=
+{{CS_MODE_16, "16"},
+ {CS_MODE_32, "32"},
+ {CS_MODE_64, "64"}}; 
+ 
+// architecture options
+typedef struct _arch_opt_t {
+  int n;
+  char *s;
+} arch_t;
+
+arch_t opt_arch[]=
+{{CS_ARCH_ARM,   "arm"  },
+ {CS_ARCH_ARM64, "arm64"},
+ {CS_ARCH_MIPS,  "mips" },
+ {CS_ARCH_PPC,   "ppc"  },
+ {CS_ARCH_SPARC, "sparc"},
+ {CS_ARCH_SYSZ,  "sysz" },
+ {CS_ARCH_X86,   "x86"  },
+ {CS_ARCH_XCORE, "xcore"}};
+ 
+// disassembly options
+typedef struct disasm_opt_t {
+  int    arch, mode, syntax;
+  int    ofs, hex, fmt;
+  char   *file;
+  #ifdef WINDOWS
+    HANDLE fd, map;
+    LPVOID *mem;
+  #else
+    int    fd, map;
+    void   *mem;
+  #endif
+  size_t size;
+  int max_op, max_mnc, max_bytes;
+} disasm_opt;
+ 
+void get_max(disasm_opt *opt) 
+{
+  csh           handle;
+  uint64_t      address=0;
+  cs_insn       *insn;
+  const uint8_t *code = (const uint8_t*)opt->mem;
+  size_t        code_len = opt->size;
+  size_t        len;
+  
+  cs_open(opt->arch, opt->mode, &handle);
+  
+  cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
+  
+  insn = cs_malloc(handle);
+  
+  while (cs_disasm_iter(handle, &code, 
+    &code_len, &address, insn)) 
+  {
+    len = strlen(insn->op_str);    
+    opt->max_op    = (len>opt->max_op) ? len : opt->max_op; 
+    
+    len = strlen(insn->mnemonic);
+    opt->max_mnc   = (len>opt->max_mnc) ? len : opt->max_mnc;
+    
+    len = insn->size;
+    opt->max_bytes = (len>opt->max_bytes) ? len : opt->max_bytes;
+   
+  }
+  cs_free(insn, 1);
+  cs_close(&handle);    
+}
+  
 // get maximum instruction length
-int get_max (FILE *input, int cpu, int type) 
+void disasm (disasm_opt *opt) 
 {
-  int  max_asm=0, len;
-  ud_t ud_obj;
-  
-  ud_init(&ud_obj);
-  ud_set_mode(&ud_obj, cpu);
-  ud_set_syntax(&ud_obj, UD_SYN_INTEL);
-  ud_set_vendor(&ud_obj, UD_VENDOR_INTEL);
-  ud_set_input_file (&ud_obj, input);
-  //ud_set_input_buffer(&ud_obj, input, size);
-  
-  while (ud_disassemble(&ud_obj)) {
-    len = (type) ? strlen(ud_insn_asm(&ud_obj)) : ud_insn_len(&ud_obj);
-    max_asm=(len>max_asm) ? len : max_asm;
-  }
-  fseek (input, 0, SEEK_SET);
-  return max_asm;
-}
-
-char *get_name(char *file)
-{
-  static char fn[16];
-  int i, len=strlen(file);
-  
-  for (i=0; i<16 && i < len; i++) {
-    if (file[i]=='.') break;
-    fn[i] = toupper(file[i]);
-  }
-  return fn;  
-}
-
-// C array output
-void bin2c (char *file, int size, 
-  FILE *input, int cpu, int o, int h)
-{
-  ud_t          ud_obj;
+  csh           handle;
+  uint64_t      address=0;
+  cs_insn       *insn;
+  const uint8_t *code = (const uint8_t*)opt->mem;
+  size_t        code_len = opt->size;
+  uint32_t      insn_max, asm_max;
   int           len, ofs, i;
-  const char    *ins;
   const uint8_t *hex;
-  char          *name=get_name(file);
+  char          ins[64];
   
-  uint32_t insn_max=get_max(input, cpu, 0) * 4;
-  uint32_t asm_max=get_max(input, cpu, 1);
+  get_max(opt);
   
-  printf ("\n#define %s_SIZE %i\n", name, size);
-  printf ("\nchar %s[] = {", name);
+  insn_max = opt->max_bytes * 4;
+  asm_max  = (opt->max_op + opt->max_mnc) + 1;
   
-  ud_init(&ud_obj);
-  ud_set_mode(&ud_obj, cpu);
-  ud_set_pc (&ud_obj, 0);
-  ud_set_syntax(&ud_obj, UD_SYN_INTEL);
-  ud_set_vendor(&ud_obj, UD_VENDOR_INTEL);
-  ud_set_input_file (&ud_obj, input);
-  //ud_set_input_buffer(&ud_obj, input, size);
+  cs_open(opt->arch, opt->mode, &handle);
   
-  while (ud_disassemble(&ud_obj)) {
-    len=ud_insn_len(&ud_obj);
-    ofs=ud_insn_off(&ud_obj);
-    ins=ud_insn_asm(&ud_obj);
-    hex=ud_insn_ptr(&ud_obj);
+  cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
+  
+  insn = cs_malloc(handle);
+  
+  while (cs_disasm_iter(handle, &code, 
+    &code_len, &address, insn)) 
+  {
+    len = insn->size;
+    ofs = insn->address;
+    
+    _snprintf(ins, sizeof(ins), "%-*s %s", 
+        opt->max_mnc, insn->mnemonic, insn->op_str);
     
     putchar('\n');
     
     // print the offset if required
-    if (o) printf ("  /* %04X */ ", ofs);
+    if (opt->ofs) {
+      printf ("  /* %04X */ ", ofs);
+    }
     
     // print hex bytes
     putchar ('\"');
-    for (i=0; i<len; i++) printf ("\\x%02x", hex[i]);
+    for (i=0; i<len; i++) {
+      printf ("\\x%02x", insn->bytes[i]);
+    }
     putchar ('\"');
     len*=4;
     
@@ -118,61 +208,118 @@ void bin2c (char *file, int size,
     while (len++ < insn_max) putchar (' ');
     
     // print asm string
-    printf (" /* %-*s */", asm_max, ins);
+    printf (" /* %-*s */", asm_max, ins);    
   }
-  printf("\n};");
+  cs_free(insn, 1);
+  cs_close(&handle);  
 }
 
-// disassembly output
-void disasm (FILE *input, int cpu, int o, int h)
+#ifdef WINDOWS
+void xstrerror (char *fmt, ...) 
 {
-  ud_t          ud_obj;
-  int           len, ofs, i;
-  const char    *ins;
-  const uint8_t *hex;
+  char    *error=NULL;
+  va_list arglist;
+  char    buffer[2048];
+  DWORD   dwError=GetLastError();
   
-  uint32_t insn_max=get_max(input, cpu, 0) * 2;
-  uint32_t asm_max=get_max(input, cpu, 1);
+  va_start (arglist, fmt);
+  wvnsprintf (buffer, sizeof(buffer) - 1, fmt, arglist);
+  va_end (arglist);
   
-  ud_init(&ud_obj);
-  ud_set_mode(&ud_obj, cpu);
-  ud_set_pc (&ud_obj, 0);
-  ud_set_syntax(&ud_obj, UD_SYN_INTEL);
-  ud_set_vendor(&ud_obj, UD_VENDOR_INTEL);
-  ud_set_input_file (&ud_obj, input);
-  //ud_set_input_buffer(&ud_obj, input, size);
-  
-  while (ud_disassemble(&ud_obj)) {
-    len=ud_insn_len(&ud_obj);  // instruction length
-    ofs=ud_insn_off(&ud_obj);  // offset
-    ins=ud_insn_asm(&ud_obj);  // asm string
-    hex=ud_insn_ptr(&ud_obj);  // hex bytes
-    
-    putchar('\n');
-    
-    // print the offset if required
-    if (o) printf ("%04X ", ofs);
-    
-    // print hex bytes if required
-    if (h)
-      for (i=0; i<len; i++) printf ("%02X", hex[i]);
-
-    len *= 2;
-    
-    // pad remainder with spaces
-    if (h || o) 
-      while (len++ < insn_max) putchar (' ');
-    
-    // print asm string
-    printf ("    %s", ins);
+  if (FormatMessage (
+      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+      NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
+      (LPSTR)&error, 0, NULL))
+  {
+    printf ("[ %s : %s\n", buffer, error);
+    LocalFree (error);
+  } else {
+    printf ("[ %s : %i\n", buffer, dwError);
   }
-  putchar('\n');
 }
 
-/**F*****************************************************************/
-char* getparam (int argc, char *argv[], int *i)
+int map_file (disasm_opt *opt) 
+{
+  int r = 0;
+  
+  opt->fd = CreateFile (opt->file, GENERIC_READ, 
+      FILE_SHARE_READ, NULL, OPEN_EXISTING, 
+      FILE_ATTRIBUTE_NORMAL, NULL);
+  
+  if (opt->fd != INVALID_HANDLE_VALUE)
+  {
+    opt->size = GetFileSize(opt->fd, 0);
+    
+    opt->map = CreateFileMapping (opt->fd, NULL, 
+        PAGE_READONLY, 0, 0, NULL);
+    if (opt->map != NULL) 
+    {
+      opt->mem = MapViewOfFile (opt->map, 
+        FILE_MAP_READ, 0, 0, 0);
+        
+      r = (opt->mem != NULL);  
+    } else {
+      xstrerror("CreateFileMapping");
+    }      
+  } else {
+    xstrerror("CreateFile");
+  }
+  return r;  
+}
+
+void unmap_file (disasm_opt *opt) {
+  UnmapViewOfFile ((LPCVOID)opt->mem);
+  CloseHandle ((HANDLE)opt->map);
+  CloseHandle ((HANDLE)opt->fd);  
+}
+
+#else
+// 
+int map_file (disasm_opt *opt) {
+  
+  int r = 0;
+  
+  // open file for reading
+  opt->fd = open(f, O_RDONLY);
+  
+  if (opt->fd > 0) {
+    // get size of file
+    r = fstat(fd, &s);
+    if (r > 0) {
+      opt->size = s.st_size;
+      // map file into memory
+      opt->mem = mmap(0, opt->size, 
+          PROT_READ, 0, opt->fd, 0);
+      r = (opt->mem != MAP_FAILED);    
+    }
+    if (!r) close(opt->fd);
+  }
+  return r;
+}
+
+// 
+void unmap_file(disasm_opt *opt) {
+  close(opt->fd);
+}
+#endif
+
+void usage(void)
+{
+  printf ("\nusage: disasm [options] <file>\n");
+  printf ("\n  -c <cpu>     CPU to disassemble for");
+  printf ("\n  -m <mode>    CPU mode"); 
+  printf ("\n  -s <syntax>  Syntax format for x86: ATT, INTEL (default)");  
+  printf ("\n  -f <format>  Output format: C, ASM");
+  printf ("\n  -o           Don't display offsets"); 
+  printf ("\n  -x           Don't display hex bytes\n"); 
+  exit(0);
+} 
+
+/**F****************************************/
+char* get_param (int argc, char *argv[], int *i)
 {
   int n=*i;
+  
   if (argv[n][2] != 0) {
     return &argv[n][2];
   }
@@ -180,36 +327,59 @@ char* getparam (int argc, char *argv[], int *i)
     *i=n+1;
     return argv[n+1];
   }
-  printf ("[ %c%c requires parameter\n", argv[n][0], argv[n][1]);
+  printf ("[ %c%c requires parameter\n", 
+      argv[n][0], argv[n][1]);
+      
   exit (0);
 }
 
-void usage(void)
+int get_format(int argc, char *argv[], int *idx)
 {
-  printf ("\nusage: disasm [options] <file>\n");
-  printf ("\n  -b <cpu>     CPU to disassemble for: 16, 32 or 64");
-  printf ("\n  -f <format>  Output format: C, ASM");
-  printf ("\n  -o           Don't display offsets"); 
-  printf ("\n  -x           Don't display hex bytes\n"); 
-  exit(0);
-}    
-
-typedef struct t_format_t {
-  int n;
-  char *s;
-} format_t;
-
-format_t formats[]=
-{{ASM_OUT, "asm"},
- {C_OUT,   "c"}};
- 
-int get_format(char *format)
-{
-  int i;
+  int  i;
+  char *format=get_param(argc, argv, idx);
   
-  for (i=0; i<sizeof(formats)/sizeof(format_t); i++) {
-    if (strcmp(formats[i].s, format)==0) {
-      return formats[i].n;
+  for (i=0; i<sizeof(opt_formats)/sizeof(format_t); i++) {
+    if (strcmp(opt_formats[i].s, format)==0) {
+      return opt_formats[i].n;
+    }
+  }
+  return -1;
+}
+
+int get_arch(int argc, char *argv[], int *idx)
+{
+  int  i;
+  char *arch=get_param(argc, argv, idx);;
+  
+  for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
+    if (strcmp(opt_arch[i].s, arch)==0) {
+      return opt_arch[i].n;
+    }
+  }
+  return -1;
+}
+
+int get_mode(int argc, char *argv[], int *idx)
+{
+  int  i;
+  char *mode=get_param(argc, argv, idx);;
+  
+  for (i=0; i<sizeof(opt_mode)/sizeof(mode_t); i++) {
+    if (strcmp(opt_mode[i].s, mode)==0) {
+      return opt_mode[i].n;
+    }
+  }
+  return -1;
+}
+
+int get_syntax(int argc, char *argv[], int *idx)
+{
+  int  i;
+  char *syntax=get_param(argc, argv, idx);;
+  
+  for (i=0; i<sizeof(opt_syntax)/sizeof(syntax_t); i++) {
+    if (strcmp(opt_syntax[i].s, syntax)==0) {
+      return opt_syntax[i].n;
     }
   }
   return -1;
@@ -217,12 +387,19 @@ int get_format(char *format)
 
 int main (int argc, char *argv[])
 {
-  int         cpu=32, ofs=1, hex=1, output=0;
-  char        *file=NULL, *format=NULL;
-  int         i;
-  char        opt;
-  struct stat st;
-  FILE        *in;
+  disasm_opt opt;
+  char       c;
+  int        i;
+  
+  // zero initialize options
+  memset(&opt, 0, sizeof(opt));
+  
+  // set default
+  opt.arch   = CS_ARCH_X86;
+  opt.mode   = CS_MODE_32;
+  opt.syntax = CS_OPT_SYNTAX_INTEL;
+  opt.ofs    = 1;
+  opt.hex    = 1;
   
   // for each argument
   for (i=1; i<argc; i++)
@@ -230,72 +407,50 @@ int main (int argc, char *argv[])
     // is this option?
     if (argv[i][0]=='-' || argv[i][1]=='/')
     {
-      // get option value
-      opt=argv[i][1];
-      switch (opt)
+      // get option
+      c=argv[i][1];
+      
+      switch (c)
       {
-        case 'b':     // cpu mode
-          cpu=atoi(getparam(argc, argv, &i));
+        case 'a':
+          opt.arch=get_arch(argc, argv, &i);
+          break;
+        case 'm':     // cpu mode
+          opt.mode=get_mode(argc, argv, &i);
           break;
         case 'f':     // output format
-          format=getparam(argc, argv, &i);
-          output=get_format(format);
+          opt.fmt=get_format(argc, argv, &i);
           break;
-        case 'o':     // display offsets
-          ofs=0;
+        case 'o':     // don't display offsets
+          opt.ofs=0;
           break;
-        case 'x':     // display hex bytes
-          hex=0;
+        case 's':     // syntax
+          opt.syntax=get_syntax(argc, argv, &i);
+          break;          
+        case 'x':     // don't display hex bytes
+          opt.hex=0;
           break;
         case '?':     // display usage
         case 'h':
           usage ();
         default:
-          printf ("  [ unknown option %c\n", opt);
+          printf ("  [ unknown option %c\n", c);
           break;
       }
     } else {
       // assume it's a file
-      file=argv[i];
+      opt.file = argv[i];
     }
   }
   
-  if (file == NULL) {
+  if (opt.file == NULL) {
     usage();   
   }
   
-  if (cpu!=16 && cpu!=32 && cpu!=64) {
-    printf ("\n  [ invalid cpu selected: 16, 32, 64 are valid parameters");
-    return 0;
-  }
-  
-  if (stat (file, &st)==0) 
+  if (map_file (&opt))
   {
-    if (st.st_size < 0xFFFF) 
-    {
-      in = fopen(file, "rb");
-      if (in != NULL) 
-      {
-        switch(output)
-        {
-          case C_OUT:
-            bin2c(file, st.st_size, in, cpu, ofs, hex);
-            break;
-          case ASM_OUT:
-            disasm(in, cpu, ofs, hex);
-            break;
-          default:
-            printf ("\n [ unknown output format");
-            break;           
-        }          
-      } else {
-        printf ("\n [ unable to open %s", file);
-      }
-    } else {
-      printf ("\n [ size of %s exceeds 65,535 bytes", file);
-    }
-  } else {
-    printf ("\n [ stat error for %s", file);
+    disasm(&opt);
+    unmap_file(&opt);
   }
   return 0;
 }

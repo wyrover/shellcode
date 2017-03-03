@@ -32,7 +32,7 @@
 ; x64 versions of freebsd + openbsd + linux
 ; odzhan
 
-    bits 64
+    bits    64
 
     push    59
     pop     rax

