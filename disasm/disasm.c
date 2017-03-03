@@ -40,31 +40,30 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <sys/stat.h>
-
 #ifdef WINDOWS
 #include <windows.h>
 #include <shlwapi.h>
-#else
-#include <sys/mman.h> 
-#endif
-
-//#include <inttypes.h>
-
-#include <capstone/capstone.h>
-#include <capstone/platform.h>
-
-#define ASM_OUT 0
-#define C_OUT   1
 
 #pragma comment (lib, "shlwapi.lib")
 #pragma comment (lib, "user32.lib")
 #pragma comment (lib, "capstone\\capstone.lib")
- 
+
+#else
+#include <sys/mman.h> 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#endif
+
+#include <capstone/capstone.h>
+
+#define ASM_OUT 0
+#define C_OUT   1
+
 // output format options 
 typedef struct opt_fmt_t {
   int n;
-  char *s;
+  const char *s;
 } format_t;
 
 format_t opt_formats[]=
@@ -74,7 +73,7 @@ format_t opt_formats[]=
 // syntax options
 typedef struct opt_syntax_t {
   int n;
-  char *s;
+  const char *s;
 } syntax_t;
 
 syntax_t opt_syntax[]=
@@ -85,10 +84,10 @@ syntax_t opt_syntax[]=
 typedef struct opt_mode_t {
   int a;
   int n;
-  char *s;
-} mode_t;
+  const char *s;
+} mode_opt_t;
   
-mode_t opt_mode[]=
+mode_opt_t opt_mode[]=
 {{CS_ARCH_ARM,  CS_MODE_ARM,      "arm"},
  {CS_ARCH_ARM,  CS_MODE_THUMB,    "thumb"},
  {CS_ARCH_MIPS, CS_MODE_MIPS32,   "32"},
@@ -103,7 +102,7 @@ mode_t opt_mode[]=
 // architecture options
 typedef struct _arch_opt_t {
   int n;
-  char *s;
+  const char *s;
 } arch_t;
 
 arch_t opt_arch[]=
@@ -125,7 +124,7 @@ typedef struct disasm_opt_t {
     HANDLE fd, map;
     LPVOID *mem;
   #else
-    int    fd, map;
+    int    fd;
     void   *mem;
   #endif
   size_t size;
@@ -147,7 +146,7 @@ void get_max(disasm_opt *opt)
     cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
   }
     
-  insn = cs_malloc(handle);
+  insn = (cs_insn*)cs_malloc(handle);
   
   while (cs_disasm_iter(handle, &code, 
     &code_len, &address, insn)) 
@@ -205,7 +204,7 @@ void disasm (disasm_opt *opt)
   if (opt->arch==CS_ARCH_X86) {
     cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
   }
-  insn = cs_malloc(handle);
+  insn = (cs_insn*)cs_malloc(handle);
   
   for (;;)
   {
@@ -229,7 +228,7 @@ void disasm (disasm_opt *opt)
     ofs = insn->address;
     
     if (r) {
-      _snprintf(ins, sizeof(ins), "%-*s %s", 
+      snprintf(ins, sizeof(ins), "%-*s %s", 
           opt->max_mnc, insn->mnemonic, insn->op_str);
     }
     putchar('\n');
@@ -323,28 +322,37 @@ void unmap_file (disasm_opt *opt) {
 int map_file (disasm_opt *opt) {
   
   int r = 0;
+  struct stat s;
   
   // open file for reading
-  opt->fd = open(f, O_RDONLY);
+  opt->fd = open(opt->file, O_RDONLY);
   
   if (opt->fd > 0) {
     // get size of file
-    r = fstat(fd, &s);
-    if (r > 0) {
+    r = fstat(opt->fd, &s);
+    if (r == 0) {
       opt->size = s.st_size;
       // map file into memory
       opt->mem = mmap(0, opt->size, 
-          PROT_READ, 0, opt->fd, 0);
+          PROT_READ, MAP_PRIVATE, opt->fd, 0);
+          
+      if (opt->mem == MAP_FAILED) {
+        perror("mmap()");
+      }    
       r = (opt->mem != MAP_FAILED);    
+    } else {
+      perror("fstat()");
     }
     if (!r) close(opt->fd);
+  } else {
+    perror ("open()");
   }
   return r;
 }
 
 // 
 void unmap_file(disasm_opt *opt) {
-  munmap(opt->map, opt->size);
+  munmap(opt->mem, opt->size);
   close(opt->fd);
 }
 #endif
@@ -358,7 +366,7 @@ void usage(void)
   printf ("\n  -s <syntax>  Syntax format for x86");  
   printf ("\n  -f <format>  Output format");
   printf ("\n  -o           Don't display offsets"); 
-  printf ("\n  -x           Don't display hex bytes\n"); 
+  printf ("\n  -x           Don't display hex bytes\n\n"); 
   exit(0);
 } 
 
@@ -410,7 +418,7 @@ int set_mode(disasm_opt *opt, char *m)
 {
   int  i;
   
-  for (i=0; i<sizeof(opt_mode)/sizeof(mode_t); i++) {
+  for (i=0; i<sizeof(opt_mode)/sizeof(mode_opt_t); i++) {
     // our target architecture?
     if (opt_mode[i].a == opt->arch) {
       // compare with string
@@ -504,7 +512,7 @@ int main (int argc, char *argv[])
   // architecture specified?
   if (arch != NULL) {
     if (!set_arch(&opt, arch)) {
-      printf ("\ninvalid architecture specified");
+      printf ("\ninvalid architecture specified\n");
       return 0;
     }
   }
@@ -512,7 +520,7 @@ int main (int argc, char *argv[])
   // mode specified?
   if (mode != NULL) {
     if (!set_mode(&opt, mode)) {
-      printf("\ninvalid mode specified");
+      printf("\ninvalid mode specified\n");
       return 0;
     }
   } else {  
@@ -521,7 +529,7 @@ int main (int argc, char *argv[])
       case CS_ARCH_ARM: 
       case CS_ARCH_ARM64: 
         opt.mode=CS_MODE_ARM;
-        break;
+        break;        
       case CS_ARCH_MIPS: 
         opt.mode=CS_MODE_MIPS32;
         break;  
@@ -533,7 +541,7 @@ int main (int argc, char *argv[])
   // syntax specified?
   if (syntax != NULL) {
     if (!set_syntax(&opt, syntax)) {
-      printf ("\ninvalid syntax specified");
+      printf ("\ninvalid syntax specified\n");
       return 0;
     }
   }
@@ -541,14 +549,14 @@ int main (int argc, char *argv[])
   // output format?
   if (format != NULL) {
     if (!set_format(&opt, format)) {
-      printf ("\ninvalid format specified");
+      printf ("\ninvalid format specified\n");
       return 0;
     }
   }
   
   // map file
   if (!map_file (&opt)) {
-    printf ("\nunable to map file into memory");
+    printf ("\nunable to map file into memory\n");
     return 0;
   }
   
