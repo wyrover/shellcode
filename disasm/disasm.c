@@ -29,6 +29,7 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define WINDOWS
+#define snprintf _snprintf
 #endif
   
 #ifdef _MSC_VER
