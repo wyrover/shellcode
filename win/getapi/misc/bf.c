@@ -13,7 +13,7 @@
 
 int main(int argc, char *argv[])
 {
-  DWORD ord, api_hash;
+  DWORD  ord, api_hash;
   LPVOID base, api;
   
   if (argc != 3) {

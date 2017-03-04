@@ -70,7 +70,7 @@
     
     xchg    eax, edi    ; edi = r, eax = 0
     push    2           ; rsi = 2
-		pop     rsi
+    pop     rsi
     
     ; step 5, assign socket handle to stdin,stdout,stderr
     ; dup2 (r, STDIN_FILENO)

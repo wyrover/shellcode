@@ -274,7 +274,8 @@ gapi_l3x:
     xor    eax, eax
     dec    eax
     jns    gapi_l5x
-    jmp    ecx
+    push   ecx
+    ret
     
     bits   64
 gapi_l5x:

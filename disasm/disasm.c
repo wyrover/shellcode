@@ -143,14 +143,13 @@ void get_max(disasm_opt *opt)
     &code_len, &address, insn)) 
   {
     len = strlen(insn->op_str);    
-    opt->max_op    = (len>opt->max_op) ? len : opt->max_op; 
+    opt->max_op    = (len  > opt->max_op) ? len : opt->max_op; 
     
     len = strlen(insn->mnemonic);
-    opt->max_mnc   = (len>opt->max_mnc) ? len : opt->max_mnc;
+    opt->max_mnc   = (len > opt->max_mnc) ? len : opt->max_mnc;
     
     len = insn->size;
-    opt->max_bytes = (len>opt->max_bytes) ? len : opt->max_bytes;
-   
+    opt->max_bytes = (len>opt->max_bytes) ? len : opt->max_bytes;   
   }
   cs_free(insn, 1);
   cs_close(&handle);    
@@ -299,6 +298,7 @@ int map_file (disasm_opt *opt) {
 
 // 
 void unmap_file(disasm_opt *opt) {
+  munmap(opt->map, opt->size);
   close(opt->fd);
 }
 #endif

