@@ -83,14 +83,22 @@ syntax_t opt_syntax[]=
   
 // cpu mode options 
 typedef struct opt_mode_t {
+  int a;
   int n;
   char *s;
 } mode_t;
   
 mode_t opt_mode[]=
-{{CS_MODE_16, "16"},
- {CS_MODE_32, "32"},
- {CS_MODE_64, "64"}}; 
+{{CS_ARCH_ARM,  CS_MODE_ARM,      "arm"},
+ {CS_ARCH_ARM,  CS_MODE_THUMB,    "thumb"},
+ {CS_ARCH_MIPS, CS_MODE_MIPS32,   "32"},
+ {CS_ARCH_MIPS, CS_MODE_MIPS64,   "64"},
+ {CS_ARCH_MIPS, CS_MODE_MIPS32R6, "r6"},
+ {CS_ARCH_PPC,  CS_MODE_32,       "32"},
+ {CS_ARCH_PPC,  CS_MODE_64,       "64"}, 
+ {CS_ARCH_X86,  CS_MODE_16,       "16"},
+ {CS_ARCH_X86,  CS_MODE_32,       "32"},
+ {CS_ARCH_X86,  CS_MODE_64,       "64"}}; 
  
 // architecture options
 typedef struct _arch_opt_t {
@@ -121,7 +129,7 @@ typedef struct disasm_opt_t {
     void   *mem;
   #endif
   size_t size;
-  int max_op, max_mnc, max_bytes;
+  size_t max_op, max_mnc, max_bytes;
 } disasm_opt;
  
 void get_max(disasm_opt *opt) 
@@ -135,8 +143,10 @@ void get_max(disasm_opt *opt)
   
   cs_open(opt->arch, opt->mode, &handle);
   
-  cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
-  
+  if (opt->arch==CS_ARCH_X86) {
+    cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
+  }
+    
   insn = cs_malloc(handle);
   
   while (cs_disasm_iter(handle, &code, 
@@ -154,6 +164,18 @@ void get_max(disasm_opt *opt)
   cs_free(insn, 1);
   cs_close(&handle);    
 }
+
+char *get_name(char *file)
+{
+  static char fn[16];
+  int i, len=strlen(file);
+  
+  for (i=0; i<16 && i < len; i++) {
+    if (file[i]=='.') break;
+    fn[i] = (char)toupper(file[i]);
+  }
+  return fn;  
+}
   
 // get maximum instruction length
 void disasm (disasm_opt *opt) 
@@ -164,30 +186,52 @@ void disasm (disasm_opt *opt)
   const uint8_t *code = (const uint8_t*)opt->mem;
   size_t        code_len = opt->size;
   uint32_t      insn_max, asm_max;
-  int           len, ofs, i;
-  const uint8_t *hex;
+  size_t        len, i;
+  int           r;
+  uint64_t      ofs;
   char          ins[64];
+  char          *name=get_name(opt->file);
   
   get_max(opt);
   
   insn_max = opt->max_bytes * 4;
   asm_max  = (opt->max_op + opt->max_mnc) + 1;
   
+  printf ("\n#define %s_SIZE %lu\n", name, opt->size);
+  printf ("\nchar %s[] = {", name);  
+  
   cs_open(opt->arch, opt->mode, &handle);
   
-  cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
-  
+  if (opt->arch==CS_ARCH_X86) {
+    cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
+  }
   insn = cs_malloc(handle);
   
-  while (cs_disasm_iter(handle, &code, 
-    &code_len, &address, insn)) 
+  for (;;)
   {
+    r = cs_disasm_iter(handle, &code, &code_len, &address, insn); 
+
+    // failed to disassemble?
+    if (!r) {
+      // have we still got code left?
+      if (code_len != 0) {
+        // try advance our position anyway
+        len = (code_len < 4) ? code_len : 4;
+        memcpy (insn->bytes, code, len);
+        code += len;
+        code_len -= len;
+        insn->size = len;
+        insn->address += len;
+      } else break;
+    }
+    
     len = insn->size;
     ofs = insn->address;
     
-    _snprintf(ins, sizeof(ins), "%-*s %s", 
-        opt->max_mnc, insn->mnemonic, insn->op_str);
-    
+    if (r) {
+      _snprintf(ins, sizeof(ins), "%-*s %s", 
+          opt->max_mnc, insn->mnemonic, insn->op_str);
+    }
     putchar('\n');
     
     // print the offset if required
@@ -207,8 +251,10 @@ void disasm (disasm_opt *opt)
     while (len++ < insn_max) putchar (' ');
     
     // print asm string
-    printf (" /* %-*s */", asm_max, ins);    
+    if (r) printf (" /* %-*s */", asm_max, ins);    
   }
+  printf("\n};");
+  
   cs_free(insn, 1);
   cs_close(&handle);  
 }
@@ -306,10 +352,11 @@ void unmap_file(disasm_opt *opt) {
 void usage(void)
 {
   printf ("\nusage: disasm [options] <file>\n");
-  printf ("\n  -c <cpu>     CPU to disassemble for");
+  printf ("\n  -a <arch>    CPU architecture to disassemble for");
   printf ("\n  -m <mode>    CPU mode"); 
-  printf ("\n  -s <syntax>  Syntax format for x86: ATT, INTEL (default)");  
-  printf ("\n  -f <format>  Output format: C, ASM");
+  printf ("\n  -e <order>   Endianess. b (big) or l(little)"); 
+  printf ("\n  -s <syntax>  Syntax format for x86");  
+  printf ("\n  -f <format>  Output format");
   printf ("\n  -o           Don't display offsets"); 
   printf ("\n  -x           Don't display hex bytes\n"); 
   exit(0);
@@ -333,56 +380,60 @@ char* get_param (int argc, char *argv[], int *i)
   exit (0);
 }
 
-int get_format(int argc, char *argv[], int *idx)
+int set_format(disasm_opt *opt, char *f)
 {
   int  i;
-  char *format=get_param(argc, argv, idx);
   
   for (i=0; i<sizeof(opt_formats)/sizeof(format_t); i++) {
-    if (strcmp(opt_formats[i].s, format)==0) {
-      return opt_formats[i].n;
+    if (strcmp(opt_formats[i].s, f)==0) {
+      opt->fmt = opt_formats[i].n;
+      return 1;
     }
   }
-  return -1;
+  return 0;
 }
 
-int get_arch(int argc, char *argv[], int *idx)
+int set_arch(disasm_opt *opt, char *a)
 {
   int  i;
-  char *arch=get_param(argc, argv, idx);;
   
   for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
-    if (strcmp(opt_arch[i].s, arch)==0) {
-      return opt_arch[i].n;
+    if (strcmp(opt_arch[i].s, a)==0) {
+      opt->arch = opt_arch[i].n;
+      return 1;
     }
   }
-  return -1;
+  return 0;
 }
 
-int get_mode(int argc, char *argv[], int *idx)
+int set_mode(disasm_opt *opt, char *m)
 {
   int  i;
-  char *mode=get_param(argc, argv, idx);;
   
   for (i=0; i<sizeof(opt_mode)/sizeof(mode_t); i++) {
-    if (strcmp(opt_mode[i].s, mode)==0) {
-      return opt_mode[i].n;
+    // our target architecture?
+    if (opt_mode[i].a == opt->arch) {
+      // compare with string
+      if (strcmp(opt_mode[i].s, m)==0) {
+        opt->mode = opt_mode[i].n;
+        return 1;
+      }
     }
   }
-  return -1;
+  return 0;
 }
 
-int get_syntax(int argc, char *argv[], int *idx)
+int set_syntax(disasm_opt *opt, char *s)
 {
   int  i;
-  char *syntax=get_param(argc, argv, idx);;
   
   for (i=0; i<sizeof(opt_syntax)/sizeof(syntax_t); i++) {
-    if (strcmp(opt_syntax[i].s, syntax)==0) {
-      return opt_syntax[i].n;
+    if (strcmp(opt_syntax[i].s, s)==0) {
+      opt->syntax = opt_syntax[i].n;
+      return 1;
     }
   }
-  return -1;
+  return 0;
 }
 
 int main (int argc, char *argv[])
@@ -390,11 +441,13 @@ int main (int argc, char *argv[])
   disasm_opt opt;
   char       c;
   int        i;
+  char       *arch=NULL, *mode=NULL;
+  char       *syntax=NULL, *format=NULL;
   
   // zero initialize options
   memset(&opt, 0, sizeof(opt));
   
-  // set default
+  // set default options
   opt.arch   = CS_ARCH_X86;
   opt.mode   = CS_MODE_32;
   opt.syntax = CS_OPT_SYNTAX_INTEL;
@@ -412,21 +465,21 @@ int main (int argc, char *argv[])
       
       switch (c)
       {
-        case 'a':
-          opt.arch=get_arch(argc, argv, &i);
+        case 'a':     // architecture
+          arch = get_param(argc, argv, &i);
           break;
         case 'm':     // cpu mode
-          opt.mode=get_mode(argc, argv, &i);
+          mode = get_param(argc, argv, &i);
           break;
         case 'f':     // output format
-          opt.fmt=get_format(argc, argv, &i);
+          format = get_param(argc, argv, &i);
           break;
         case 'o':     // don't display offsets
           opt.ofs=0;
           break;
         case 's':     // syntax
-          opt.syntax=get_syntax(argc, argv, &i);
-          break;          
+          syntax = get_param(argc, argv, &i);
+          break;           
         case 'x':     // don't display hex bytes
           opt.hex=0;
           break;
@@ -443,15 +496,65 @@ int main (int argc, char *argv[])
     }
   }
   
+  // no input file?
   if (opt.file == NULL) {
     usage();   
   }
   
-  if (map_file (&opt))
-  {
-    disasm(&opt);
-    unmap_file(&opt);
+  // architecture specified?
+  if (arch != NULL) {
+    if (!set_arch(&opt, arch)) {
+      printf ("\ninvalid architecture specified");
+      return 0;
+    }
   }
+
+  // mode specified?
+  if (mode != NULL) {
+    if (!set_mode(&opt, mode)) {
+      printf("\ninvalid mode specified");
+      return 0;
+    }
+  } else {  
+    // ensure our mode is compatible with architecture
+    switch (opt.arch) {
+      case CS_ARCH_ARM: 
+      case CS_ARCH_ARM64: 
+        opt.mode=CS_MODE_ARM;
+        break;
+      case CS_ARCH_MIPS: 
+        opt.mode=CS_MODE_MIPS32;
+        break;  
+      case CS_ARCH_PPC:
+        opt.mode=CS_MODE_32;
+        break;        
+    }
+  }    
+  // syntax specified?
+  if (syntax != NULL) {
+    if (!set_syntax(&opt, syntax)) {
+      printf ("\ninvalid syntax specified");
+      return 0;
+    }
+  }
+  
+  // output format?
+  if (format != NULL) {
+    if (!set_format(&opt, format)) {
+      printf ("\ninvalid format specified");
+      return 0;
+    }
+  }
+  
+  // map file
+  if (!map_file (&opt)) {
+    printf ("\nunable to map file into memory");
+    return 0;
+  }
+  
+  // disassemble
+  disasm(&opt);
+  unmap_file(&opt);  
   return 0;
 }
 
