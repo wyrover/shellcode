@@ -99,7 +99,10 @@ typedef struct opt_mode_t {
   
 mode_opt_t opt_mode[]=
 {{CS_ARCH_ARM,  CS_MODE_ARM,      "arm"   },
+ {CS_ARCH_ARM,  CS_MODE_V8,       "v8"    },
+ {CS_ARCH_ARM64,CS_MODE_ARM,      "arm"   },
  {CS_ARCH_ARM,  CS_MODE_THUMB,    "thumb" },
+ {CS_ARCH_ARM,  CS_MODE_MCLASS,   "mclass"},
  {CS_ARCH_MIPS, CS_MODE_MIPS32,   "32"    },
  {CS_ARCH_MIPS, CS_MODE_MIPS64,   "64"    },
  {CS_ARCH_MIPS, CS_MODE_MIPS32R6, "R6"    },
@@ -107,7 +110,8 @@ mode_opt_t opt_mode[]=
  {CS_ARCH_PPC,  CS_MODE_64,       "64"    }, 
  {CS_ARCH_X86,  CS_MODE_16,       "16"    },
  {CS_ARCH_X86,  CS_MODE_32,       "32"    },
- {CS_ARCH_X86,  CS_MODE_64,       "64"    }}; 
+ {CS_ARCH_X86,  CS_MODE_64,       "64"    }, 
+ {CS_ARCH_SPARC,CS_MODE_V9,       "v9"    }}; 
  
 // architecture options
 typedef struct _arch_opt_t {
@@ -218,7 +222,7 @@ void get_max(disasm_opt *opt)
   cs_close(&handle);    
 }
 
-char *get_name(char *file)
+char *get_name(const char *file)
 {
   static char fn[16];
   char        *p;
@@ -229,7 +233,7 @@ char *get_name(char *file)
     p = strrchr(file, '\\');
   }
   
-  p = (p==NULL) ? file : p+1;
+  p = (p==NULL) ? (char*)file : p+1;
   len = strlen(p);
   
   for (i=0; i<16 && i < len; i++) {
@@ -263,7 +267,7 @@ void disasm (disasm_opt *opt)
   printf ("\n// Target architecture : %s %s", 
      opt->arch_desc, opt->mode_desc);
      
-  if (opt->arch != CS_ARCH_X86) {
+  if (opt->arch != CS_ARCH_X86 && opt->arch != CS_ARCH_SPARC) {
     printf ("\n// Endian mode         : %s", opt->endian_desc);
   }
   
@@ -275,7 +279,14 @@ void disasm (disasm_opt *opt)
   if (opt->arch==CS_ARCH_X86) {
     cs_option(handle, CS_OPT_SYNTAX, opt->syntax);
   }
-  insn = (cs_insn*)cs_malloc(handle);
+  
+  insn = cs_malloc(handle);
+  
+  if (insn==NULL) {
+    printf ("\nerror allocating memory for instruction\n");    
+    cs_close(&handle);
+    return;
+  }
   
   for (;;)
   {
@@ -481,29 +492,37 @@ int set_arch(disasm_opt *opt, char *a)
   for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
     if (strcmp(opt_arch[i].s, a)==0) {
       opt->arch_desc = opt_arch[i].desc;
-      opt->arch = opt_arch[i].n;
+      opt->arch      = opt_arch[i].n;
       return 1;
     }
   }
   return 0;
 }
 
+// modes are separated by comma
 int set_mode(disasm_opt *opt, char *m)
 {
-  int  i;
+  int  i, x=0;
+  char *t = strtok(m, ",;");
   
-  for (i=0; i<sizeof(opt_mode)/sizeof(mode_opt_t); i++) {
-    // our target architecture?
-    if (opt_mode[i].a == opt->arch) {
-      // compare with string
-      if (strcmp(opt_mode[i].s, m)==0) {
-        opt->mode_desc = opt_mode[i].s;        
-        opt->mode = opt_mode[i].n;
-        return 1;
+  while (t != NULL) {    
+    //printf ("\nchecking %s", t);
+    for (i=0; i<sizeof(opt_mode)/sizeof(mode_opt_t); i++) {
+      // our target architecture?
+      if (opt_mode[i].a == opt->arch) {
+        // compare with string
+        if (strcmp(opt_mode[i].s, t) == 0) {
+          x++;
+          opt->mode_desc = opt_mode[i].s;        
+          opt->mode     += opt_mode[i].n;
+          break;
+        }
       }
     }
+    t = strtok(NULL, ",;");
   }
-  return 0;
+  //printf ("\nadded %i modes", x);
+  return x;
 }
 
 int set_syntax(disasm_opt *opt, char *s)
@@ -545,12 +564,13 @@ int main (int argc, char *argv[])
   memset(&opt, 0, sizeof(opt));
   
   // set default options
+  /**
   opt.arch        = CS_ARCH_X86; 
   opt.arch_desc   ="X86";
   opt.mode        = CS_MODE_32; 
   opt.mode_desc   ="32";
   opt.endian_desc = "little";
-  opt.syntax      = CS_OPT_SYNTAX_INTEL;
+  opt.syntax      = CS_OPT_SYNTAX_INTEL;*/
   opt.ofs         = 1;
   opt.hex         = 1;
   

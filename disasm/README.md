@@ -32,11 +32,19 @@ PowerPC 32-bit Big Endian
 
 MIPS 32-bit Little Endian
 
-![alt text](https://github.com/odzhan/shellcode/blob/master/win/disasm/img/mips32_le.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/mips32_le.png)
 
 X86 32-bit 
 
-![alt text](https://github.com/odzhan/shellcode/blob/master/win/disasm/img/x86_32.png)
+![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/x86_32.png)
+
+X86 64-bit using AT&T Syntax
+
+![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/x86_64_att.png)
+
+SPARC
+
+![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/sparc.png)
 
 ## Author ##
 
