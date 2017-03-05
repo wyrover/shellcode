@@ -1,6 +1,6 @@
 
 /**
-  Copyright © 2016 Odzhan. All Rights Reserved.
+  Copyright © 2016-2017 Odzhan. All Rights Reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
@@ -79,6 +79,9 @@
 typedef struct _args_t {
   int      s, r;
   char     *port, *address, *file;
+  #ifdef WIN
+  char     *modules;
+  #endif
   int      port_nbr, ai_family, mode, sim, tx_mode, ai_addrlen, dbg;
   struct   sockaddr *ai_addr;
   struct   sockaddr_in v4;
@@ -503,6 +506,24 @@ void xfile(args_t *p)
   xcode(p);
 }
 
+#ifdef WIN
+void load_modules(char *names)
+{
+  HMODULE mod;
+  char *p = strtok(names, ";,");
+  
+  while (p != NULL)
+  {
+    printf ("[ loading %s...", p);
+    mod = LoadLibrary(p);
+    
+    printf ("%s\n", mod==NULL ? "FAILED" : "OK");
+    
+    p = strtok(NULL, ";,");
+  }
+}
+#endif
+
 /**F*****************************************************************/
 void usage (void) 
 {
@@ -510,6 +531,9 @@ void usage (void)
   printf ("\n  -4            Use IP version 4 (default)");
   printf ("\n  -6            Use IP version 6");
   printf ("\n  -l            Listen mode (required when listening on specific interface)");
+  #ifdef WIN
+  printf ("\n  -m <dll>      Loads DLL modules. Each one separated by comma or semi-colon");
+  #endif
   printf ("\n  -f <file>     Read PIC from <file>");
   printf ("\n  -s <count>    Simulate real process by creating file descriptors");
   printf ("\n  -p <number>   Port number to use (default is %s)", DEFAULT_PORT);
@@ -567,6 +591,11 @@ void parse_args (args_t *p, int argc, char *argv[])
         case 'l':     // listen for incoming connections
           p->mode=RSC_SERVER;
           break;
+        #ifdef WIN  
+        case 'm':     // windows only, loads modules required by shellcode
+          p->modules = getparam(argc, argv, &i);
+          break;
+        #endif          
         case 's':     // create file descriptors before execution
           p->sim=atoi(getparam(argc, argv, &i));
           break;
@@ -602,7 +631,9 @@ int main (int argc, char *argv[])
   WSADATA wsa;
   
   //Wow64DisableWow64FsRedirection (&OldValue);
-  LoadLibraryA("ws2_32");
+  LoadLibrary("ws2_32");
+  LoadLibrary("advapi32");
+  
   WSAStartup(MAKEWORD(2,0), &wsa);
   #endif
   
@@ -639,6 +670,11 @@ int main (int argc, char *argv[])
     }
   }
   
+  #ifdef WIN
+  if (args.modules != NULL) {
+    load_modules(args.modules);
+  }
+  #endif
   // if mode is executing
   if (args.mode==RSC_EXEC) {
     if (args.file!=NULL) {

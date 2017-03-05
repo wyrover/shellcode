@@ -1,5 +1,5 @@
 /**
-  Copyright © 2015-2017 Odzhan. All Rights Reserved.
+  Copyright © 2017 Odzhan. All Rights Reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
@@ -443,6 +443,8 @@ void unmap_file(disasm_opt *opt) {
 
 void usage(void)
 {
+  int i, j;
+  
   printf ("\nusage: disasm [options] <file>\n");
   printf ("\n  -a <arch>    CPU architecture to disassemble for");
   printf ("\n  -m <mode>    CPU mode"); 
@@ -451,6 +453,18 @@ void usage(void)
   printf ("\n  -f <format>  Output format");
   printf ("\n  -o           Don't display offsets"); 
   printf ("\n  -x           Don't display hex bytes\n\n"); 
+  
+  /*
+  printf ("\narchitectures\n");
+  for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
+    printf ("  %s - %s\n", opt_arch[i].s, opt_arch[i].desc);
+    for (j=0; j<sizeof(opt_mode)/sizeof(mode_opt_t); j++) {
+      if (opt_mode[j].n == opt_arch[i].a) {
+        printf (" %s - %s", opt_mode[j].s, opt_mode[j].s);
+      }
+    }
+  }*/
+  
   exit(0);
 } 
 
@@ -630,6 +644,8 @@ int main (int argc, char *argv[])
       printf ("\ninvalid architecture specified\n");
       return 0;
     }
+  } else {
+    opt.arch=CS_ARCH_X86;
   }
 
   // mode specified?
