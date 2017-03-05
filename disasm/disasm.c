@@ -141,6 +141,34 @@ typedef struct disasm_opt_t {
   size_t max_op, max_mnc, max_bytes;
 } disasm_opt;
  
+/** 
+void detect(disasm_opt *opt)
+{
+  csh           handle;
+  uint64_t      address=0;
+  cs_insn       *insn;
+  const uint8_t *code = (const uint8_t*)opt->mem;
+  size_t        code_len = opt->size;
+  size_t        len;
+  int           r;
+  
+  // for each architecture
+  for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
+    // for each applicable mode
+    for (j=0; j<sizeof(opt_mode)/sizeof(mode_opt); j++) {
+      // for each extra mode
+      for (k=0; k<sizeof(opt_xtra)/sizeof(xtra_opt); k++) {
+        code     = (const uint8_t*)opt->mem;
+        code_len = opt->size;
+        
+        cs_open(arch, mode, &handle);
+        while (cs_disasm_iter(handle, &code, &code_len, &address, insn);
+        cs_close(&handle);
+      }
+    }
+  }
+}*/
+  
 void get_max(disasm_opt *opt) 
 {
   csh           handle;
@@ -193,11 +221,20 @@ void get_max(disasm_opt *opt)
 char *get_name(char *file)
 {
   static char fn[16];
-  int i, len=strlen(file);
+  char        *p;
+  int         i, len;
+ 
+  p = strrchr(file, '/');
+  if (p==NULL) {
+    p = strrchr(file, '\\');
+  }
+  
+  p = (p==NULL) ? file : p+1;
+  len = strlen(p);
   
   for (i=0; i<16 && i < len; i++) {
-    if (file[i]=='.') break;
-    fn[i] = (char)toupper(file[i]);
+    if (p[i]=='.') break;
+    fn[i] = (char)toupper(p[i]);
   }
   return fn;  
 }
@@ -223,7 +260,7 @@ void disasm (disasm_opt *opt)
   asm_max  = (opt->max_op + opt->max_mnc) + 1;
 
   // include details about shellcode
-  printf ("\n// Target architecture : %s-%s", 
+  printf ("\n// Target architecture : %s %s", 
      opt->arch_desc, opt->mode_desc);
      
   if (opt->arch != CS_ARCH_X86) {
@@ -596,7 +633,7 @@ int main (int argc, char *argv[])
         break;  
       case CS_ARCH_SPARC:
         opt.mode=0;
-        opt.mode_desc="N/A";
+        opt.mode_desc="";
         break;        
     }
   }
