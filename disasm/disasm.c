@@ -61,6 +61,15 @@
 #define ASM_OUT 0
 #define C_OUT   1
 
+typedef struct opt_endian_t {
+  int n;
+  const char *s, *desc;
+} endian_t;
+
+endian_t opt_endian[]=
+{{ CS_MODE_LITTLE_ENDIAN, "le", "little"},
+ { CS_MODE_BIG_ENDIAN,    "be", "big"}};
+   
 // output format options 
 typedef struct opt_fmt_t {
   int n;
@@ -89,38 +98,38 @@ typedef struct opt_mode_t {
 } mode_opt_t;
   
 mode_opt_t opt_mode[]=
-{{CS_ARCH_ARM,  CS_MODE_ARM,      "arm"},
- {CS_ARCH_ARM,  CS_MODE_THUMB,    "thumb"},
- {CS_ARCH_MIPS, CS_MODE_MIPS32,   "32"},
- {CS_ARCH_MIPS, CS_MODE_MIPS64,   "64"},
- {CS_ARCH_MIPS, CS_MODE_MIPS32R6, "r6"},
- {CS_ARCH_PPC,  CS_MODE_32,       "32"},
- {CS_ARCH_PPC,  CS_MODE_64,       "64"}, 
- {CS_ARCH_X86,  CS_MODE_16,       "16"},
- {CS_ARCH_X86,  CS_MODE_32,       "32"},
- {CS_ARCH_X86,  CS_MODE_64,       "64"}}; 
+{{CS_ARCH_ARM,  CS_MODE_ARM,      "arm"   },
+ {CS_ARCH_ARM,  CS_MODE_THUMB,    "thumb" },
+ {CS_ARCH_MIPS, CS_MODE_MIPS32,   "32"    },
+ {CS_ARCH_MIPS, CS_MODE_MIPS64,   "64"    },
+ {CS_ARCH_MIPS, CS_MODE_MIPS32R6, "R6"    },
+ {CS_ARCH_PPC,  CS_MODE_32,       "32"    },
+ {CS_ARCH_PPC,  CS_MODE_64,       "64"    }, 
+ {CS_ARCH_X86,  CS_MODE_16,       "16"    },
+ {CS_ARCH_X86,  CS_MODE_32,       "32"    },
+ {CS_ARCH_X86,  CS_MODE_64,       "64"    }}; 
  
 // architecture options
 typedef struct _arch_opt_t {
   int n;
-  const char *s;
+  const char *s, *desc;
 } arch_t;
 
 arch_t opt_arch[]=
-{{CS_ARCH_ARM,   "arm"  },
- {CS_ARCH_ARM64, "arm64"},
- {CS_ARCH_MIPS,  "mips" },
- {CS_ARCH_PPC,   "ppc"  },
- {CS_ARCH_SPARC, "sparc"},
- {CS_ARCH_SYSZ,  "sysz" },
- {CS_ARCH_X86,   "x86"  },
- {CS_ARCH_XCORE, "xcore"}};
+{{CS_ARCH_ARM,   "arm",   "ARM"           },
+ {CS_ARCH_ARM64, "arm64", "ARMv8/AArch64" },
+ {CS_ARCH_MIPS,  "mips",  "Mips"          },
+ {CS_ARCH_PPC,   "ppc",   "PowerPC"       },
+ {CS_ARCH_SPARC, "sparc", "Sparc"         },
+ {CS_ARCH_SYSZ,  "sysz",  "SystemZ"       },
+ {CS_ARCH_X86,   "x86",   "X86"           },
+ {CS_ARCH_XCORE, "xcore", "XCore"         }};
  
 // disassembly options
 typedef struct disasm_opt_t {
   int    arch, mode, syntax;
   int    ofs, hex, fmt;
-  char   *file;
+  const char   *file, *arch_desc, *mode_desc, *endian_desc;
   #ifdef WINDOWS
     HANDLE fd, map;
     LPVOID *mem;
@@ -140,6 +149,7 @@ void get_max(disasm_opt *opt)
   const uint8_t *code = (const uint8_t*)opt->mem;
   size_t        code_len = opt->size;
   size_t        len;
+  int           r;
   
   cs_open(opt->arch, opt->mode, &handle);
   
@@ -149,17 +159,32 @@ void get_max(disasm_opt *opt)
     
   insn = (cs_insn*)cs_malloc(handle);
   
-  while (cs_disasm_iter(handle, &code, 
-    &code_len, &address, insn)) 
+  for (;;)
   {
-    len = strlen(insn->op_str);    
-    opt->max_op    = (len  > opt->max_op) ? len : opt->max_op; 
-    
-    len = strlen(insn->mnemonic);
-    opt->max_mnc   = (len > opt->max_mnc) ? len : opt->max_mnc;
-    
-    len = insn->size;
-    opt->max_bytes = (len>opt->max_bytes) ? len : opt->max_bytes;   
+    r = cs_disasm_iter(handle, &code, &code_len, &address, insn); 
+
+    // failed to disassemble?
+    if (!r) {
+      // have we still got code left?
+      if (code_len != 0) {
+        // try advance our position anyway
+        len = (code_len < 4) ? code_len : 4;
+        memcpy (insn->bytes, code, len);
+        code += len;
+        code_len -= len;
+        insn->size = len;
+        insn->address += len;
+      } else break;
+    } else {
+      len = strlen(insn->op_str);    
+      opt->max_op    = (len  > opt->max_op) ? len : opt->max_op; 
+      
+      len = strlen(insn->mnemonic);
+      opt->max_mnc   = (len > opt->max_mnc) ? len : opt->max_mnc;
+      
+      len = insn->size;
+      opt->max_bytes = (len>opt->max_bytes) ? len : opt->max_bytes;   
+    }
   }
   cs_free(insn, 1);
   cs_close(&handle);    
@@ -190,14 +215,22 @@ void disasm (disasm_opt *opt)
   int           r;
   uint64_t      ofs;
   char          ins[64];
-  char          *name=get_name(opt->file);
+  const char    *name=get_name(opt->file);
   
   get_max(opt);
   
   insn_max = opt->max_bytes * 4;
   asm_max  = (opt->max_op + opt->max_mnc) + 1;
+
+  // include details about shellcode
+  printf ("\n// Target architecture : %s-%s", 
+     opt->arch_desc, opt->mode_desc);
+     
+  if (opt->arch != CS_ARCH_X86) {
+    printf ("\n// Endian mode         : %s", opt->endian_desc);
+  }
   
-  printf ("\n#define %s_SIZE %lu\n", name, opt->size);
+  printf ("\n\n#define %s_SIZE %lu\n", name, opt->size);
   printf ("\nchar %s[] = {", name);  
   
   cs_open(opt->arch, opt->mode, &handle);
@@ -229,6 +262,8 @@ void disasm (disasm_opt *opt)
     ofs = insn->address;
     
     if (r) {
+      memset(ins, 0, sizeof(ins));
+      
       snprintf(ins, sizeof(ins), "%-*s %s", 
           opt->max_mnc, insn->mnemonic, insn->op_str);
     }
@@ -363,7 +398,7 @@ void usage(void)
   printf ("\nusage: disasm [options] <file>\n");
   printf ("\n  -a <arch>    CPU architecture to disassemble for");
   printf ("\n  -m <mode>    CPU mode"); 
-  printf ("\n  -e <order>   Endianess. b (big) or l(little)"); 
+  printf ("\n  -e <order>   Endianess. be or le"); 
   printf ("\n  -s <syntax>  Syntax format for x86");  
   printf ("\n  -f <format>  Output format");
   printf ("\n  -o           Don't display offsets"); 
@@ -408,6 +443,7 @@ int set_arch(disasm_opt *opt, char *a)
   
   for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
     if (strcmp(opt_arch[i].s, a)==0) {
+      opt->arch_desc = opt_arch[i].desc;
       opt->arch = opt_arch[i].n;
       return 1;
     }
@@ -424,6 +460,7 @@ int set_mode(disasm_opt *opt, char *m)
     if (opt_mode[i].a == opt->arch) {
       // compare with string
       if (strcmp(opt_mode[i].s, m)==0) {
+        opt->mode_desc = opt_mode[i].s;        
         opt->mode = opt_mode[i].n;
         return 1;
       }
@@ -445,23 +482,40 @@ int set_syntax(disasm_opt *opt, char *s)
   return 0;
 }
 
+int set_endian(disasm_opt *opt, char *e)
+{
+  int  i;
+  
+  for (i=0; i<sizeof(opt_endian)/sizeof(endian_t); i++) {
+    if (strcmp(opt_endian[i].s, e)==0) {
+      opt->endian_desc = opt_endian[i].desc;
+      opt->mode += opt_endian[i].n;
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int main (int argc, char *argv[])
 {
   disasm_opt opt;
   char       c;
   int        i;
-  char       *arch=NULL, *mode=NULL;
+  char       *arch=NULL, *mode=NULL, *endian=NULL;
   char       *syntax=NULL, *format=NULL;
   
   // zero initialize options
   memset(&opt, 0, sizeof(opt));
   
   // set default options
-  opt.arch   = CS_ARCH_X86;
-  opt.mode   = CS_MODE_32;
-  opt.syntax = CS_OPT_SYNTAX_INTEL;
-  opt.ofs    = 1;
-  opt.hex    = 1;
+  opt.arch        = CS_ARCH_X86; 
+  opt.arch_desc   ="X86";
+  opt.mode        = CS_MODE_32; 
+  opt.mode_desc   ="32";
+  opt.endian_desc = "little";
+  opt.syntax      = CS_OPT_SYNTAX_INTEL;
+  opt.ofs         = 1;
+  opt.hex         = 1;
   
   // for each argument
   for (i=1; i<argc; i++)
@@ -475,22 +529,25 @@ int main (int argc, char *argv[])
       switch (c)
       {
         case 'a':     // architecture
-          arch = get_param(argc, argv, &i);
+          arch   = get_param(argc, argv, &i);
           break;
+        case 'e':
+          endian = get_param(argc, argv, &i);
+          break;          
         case 'm':     // cpu mode
-          mode = get_param(argc, argv, &i);
+          mode   = get_param(argc, argv, &i);
           break;
         case 'f':     // output format
           format = get_param(argc, argv, &i);
           break;
         case 'o':     // don't display offsets
-          opt.ofs=0;
+          opt.ofs= 0;
           break;
         case 's':     // syntax
           syntax = get_param(argc, argv, &i);
           break;           
         case 'x':     // don't display hex bytes
-          opt.hex=0;
+          opt.hex= 0;
           break;
         case '?':     // display usage
         case 'h':
@@ -521,7 +578,7 @@ int main (int argc, char *argv[])
   // mode specified?
   if (mode != NULL) {
     if (!set_mode(&opt, mode)) {
-      printf("\ninvalid mode specified\n");
+      printf ("\ninvalid mode specified\n");
       return 0;
     }
   } else {  
@@ -536,9 +593,20 @@ int main (int argc, char *argv[])
         break;  
       case CS_ARCH_PPC:
         opt.mode=CS_MODE_32;
+        break;  
+      case CS_ARCH_SPARC:
+        opt.mode=0;
+        opt.mode_desc="N/A";
         break;        
     }
-  }    
+  }
+  // endianess?
+  if (endian != NULL) {
+    if (!set_endian(&opt, endian)) {
+      printf ("\ninvalid endianess specified\n");
+      return 0;
+    }
+  }  
   // syntax specified?
   if (syntax != NULL) {
     if (!set_syntax(&opt, syntax)) {
