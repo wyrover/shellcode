@@ -40,14 +40,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <ctype.h>
 
 #ifdef WINDOWS
 #include <windows.h>
 #include <shlwapi.h>
 
+#ifdef _MSC_VER
 #pragma comment (lib, "shlwapi.lib")
 #pragma comment (lib, "user32.lib")
 #pragma comment (lib, "capstone\\capstone.lib")
+#endif
 
 #else
 #include <sys/mman.h> 
@@ -57,6 +60,8 @@
 #endif
 
 #include <capstone/capstone.h>
+
+#define MAX_BIN_LEN 65535
 
 #define ASM_OUT 0
 #define C_OUT   1
@@ -271,7 +276,7 @@ void disasm (disasm_opt *opt)
     printf ("\n// Endian mode         : %s", opt->endian_desc);
   }
   
-  printf ("\n\n#define %s_SIZE %lu\n", name, opt->size);
+  printf ("\n\n#define %s_SIZE %i\n", name, opt->size);
   printf ("\nchar %s[] = {", name);  
   
   cs_open(opt->arch, opt->mode, &handle);
@@ -319,7 +324,7 @@ void disasm (disasm_opt *opt)
     
     // print the offset if required
     if (opt->ofs) {
-      printf ("  /* %04X */ ", ofs);
+      printf ("  /* %04X */ ", (uint32_t)ofs);
     }
     
     // print hex bytes
@@ -362,7 +367,7 @@ void xstrerror (char *fmt, ...)
     printf ("[ %s : %s\n", buffer, error);
     LocalFree (error);
   } else {
-    printf ("[ %s : %i\n", buffer, dwError);
+    printf ("[ %s : %lu\n", buffer, dwError);
   }
 }
 
@@ -414,7 +419,7 @@ int map_file (disasm_opt *opt) {
   if (opt->fd > 0) {
     // get size of file
     r = fstat(opt->fd, &s);
-    if (r == 0) {
+    if (r == 0 && s.st_size <= MAX_BIN_LEN) {
       opt->size = s.st_size;
       // map file into memory
       opt->mem = mmap(0, opt->size, 
@@ -443,7 +448,7 @@ void unmap_file(disasm_opt *opt) {
 
 void usage(void)
 {
-  int i, j;
+  int i;
   
   printf ("\nusage: disasm [options] <file>\n");
   printf ("\n  -a <arch>    CPU architecture to disassemble for");
@@ -698,7 +703,7 @@ int main (int argc, char *argv[])
   
   // map file
   if (!map_file (&opt)) {
-    printf ("\nunable to map file into memory\n");
+    printf ("\nunable to map file into memory (limit is %i bytes)\n", MAX_BIN_LEN);
     return 0;
   }
   
