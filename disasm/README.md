@@ -30,26 +30,39 @@ There's already prebuilt library in **disasm\capstone** folder
 
     cl disasm.c -I.
     
+## usage ##
+
+![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/disasm.png)
     
 ## Examples ##
 
-PowerPC 32-bit Big Endian
+**PowerPC 32-bit Big Endian**
+
+    disasm bin\sc_2.bin -appc -ebe
 
 ![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/ppc32_be.png)
 
-MIPS 32-bit Little Endian
+**MIPS 32-bit Little Endian**
+
+	disasm bin\sc_4.bin -amips -ele
 
 ![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/mips32_le.png)
 
-X86 32-bit 
+**X86 32-bit** 
+
+	disasm bin\w32.bin
 
 ![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/x86_32.png)
 
-X86 64-bit using AT&T Syntax
+**X86 64-bit using AT&T Syntax**
+
+	disasm bin\w64.bin -satt
 
 ![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/x86_64_att.png)
 
-SPARC
+**SPARC**
+
+	disasm bin\sc_9 -asparc
 
 ![alt text](https://github.com/odzhan/shellcode/blob/master/disasm/img/sparc.png)
 
