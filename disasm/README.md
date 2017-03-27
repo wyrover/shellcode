@@ -24,6 +24,12 @@ There's already prebuilt library in **disasm\capstone** folder
     ./make.sh
     ./make.sh install
 
+## Compiling ##
+
+**MSVC**
+    cl disasm.c -I.
+    
+    
 ## Examples ##
 
 PowerPC 32-bit Big Endian

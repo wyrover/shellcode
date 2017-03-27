@@ -578,13 +578,12 @@ int main (int argc, char *argv[])
   memset(&opt, 0, sizeof(opt));
   
   // set default options
-  /**
   opt.arch        = CS_ARCH_X86; 
   opt.arch_desc   ="X86";
   opt.mode        = CS_MODE_32; 
   opt.mode_desc   ="32";
   opt.endian_desc = "little";
-  opt.syntax      = CS_OPT_SYNTAX_INTEL;*/
+  opt.syntax      = CS_OPT_SYNTAX_INTEL;
   opt.ofs         = 1;
   opt.hex         = 1;
   
