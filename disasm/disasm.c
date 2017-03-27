@@ -277,7 +277,7 @@ void disasm (disasm_opt *opt)
     printf ("\n// Endian mode         : %s", opt->endian_desc);
   }
   
-  printf ("\n\n#define %s_SIZE %i\n", name, opt->size);
+  printf ("\n\n#define %s_SIZE %i\n", name, (int)opt->size);
   printf ("\nchar %s[] = {", name);  
   
   cs_open(opt->arch, opt->mode, &handle);
