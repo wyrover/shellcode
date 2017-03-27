@@ -449,22 +449,23 @@ void usage(void)
   printf ("\n  -a <arch>    CPU architecture to disassemble for");
   printf ("\n  -m <mode>    CPU mode"); 
   printf ("\n  -e <order>   Endianess. be or le"); 
-  printf ("\n  -s <syntax>  Syntax format for x86");  
-  printf ("\n  -f <format>  Output format");
+  printf ("\n  -s <syntax>  Syntax format for x86. att or intel (default)");  
+  printf ("\n  -f <format>  Output format. C (default) or ASM");
   printf ("\n  -o           Don't display offsets"); 
   printf ("\n  -x           Don't display hex bytes\n\n"); 
   
-  /*
-  printf ("\narchitectures\n");
-  for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
-    printf ("  %s - %s\n", opt_arch[i].s, opt_arch[i].desc);
-    for (j=0; j<sizeof(opt_mode)/sizeof(mode_opt_t); j++) {
-      if (opt_mode[j].n == opt_arch[i].a) {
-        printf (" %s - %s", opt_mode[j].s, opt_mode[j].s);
-      }
-    }
-  }*/
+  printf ("\n* valid architectures\n");
   
+  for (i=0; i<sizeof(opt_arch)/sizeof(arch_t); i++) {
+    printf ("  %-10s : %s\n", opt_arch[i].s, opt_arch[i].desc);
+  }
+
+  printf ("\n* valid modes (separated by semi-colon or comma)\n\n");
+  
+  for (i=0; i<sizeof(opt_mode)/sizeof(mode_opt_t); i++) {
+    printf (" %s;", opt_mode[i].s);
+  }
+  putchar('\n');
   exit(0);
 } 
 
