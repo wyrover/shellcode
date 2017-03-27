@@ -319,7 +319,7 @@ void disasm (disasm_opt *opt)
       memset(ins, 0, sizeof(ins));
       
       snprintf(ins, sizeof(ins), "%-*s %s", 
-          opt->max_mnc, insn->mnemonic, insn->op_str);
+          (int)opt->max_mnc, insn->mnemonic, insn->op_str);
     }
     putchar('\n');
     
