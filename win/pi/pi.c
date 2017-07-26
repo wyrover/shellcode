@@ -116,7 +116,7 @@ void xstrerror (char *fmt, ...) {
         NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
         (LPWSTR)&error, 0, NULL))
   {
-    printf ("  [ %s : %ws\n", buffer, error);
+    printf ("  [ %s : %s\n", buffer, error);
     LocalFree (error);
   } else {
     printf ("  [ %s error : %08lX\n", buffer, dwError);
@@ -179,9 +179,7 @@ BOOL proc2uid (HANDLE hProc, wchar_t domain[],
     SID_NAME_USE peUse;
     PTOKEN_USER  pUser;
     BOOL         bResult     = FALSE;
-    DWORD        dwTokenSize = 0, 
-                 dwUserName  = 64, 
-                 dwDomain    = 64;
+    DWORD        dwTokenSize = 0;
     
     // try open security token
     if (!OpenProcessToken(hProc, TOKEN_QUERY, &hToken)) {
@@ -217,7 +215,7 @@ BOOL proc2uid (HANDLE hProc, wchar_t domain[],
 // list running process on system
 DWORD pslist (int exclude)
 {
-  HANDLE         hSnap, hProc;
+  HANDLE         hProc;
   DWORD          dwId = 0, ulen, dlen, mode=0;
   BOOL           bWow64;
   wchar_t        *cpu, *uid, *dom;
@@ -229,8 +227,8 @@ DWORD pslist (int exclude)
   
   if (procList != NULL) 
   {
-    printf("\n%-35s  %-5s   %5s     %s", "Image Name", "PID", "CPU", "domain\\username");
-    printf("\n===================================  =====     ======  ===============\n");
+    wprintf(L"\n%-35s  %-5s   %5s     %s", L"Image Name", L"PID", L"CPU", L"domain\\username");
+    wprintf(L"\n===================================  =====     ======  ===============\n");
     
     mode = GetMode();
     
@@ -281,7 +279,7 @@ DWORD pslist (int exclude)
         }          
       }
 
-      printf ("%-35ws  %-5lu  %5ws-bit  %ws\\%ws\n", 
+      wprintf (L"%-35s  %-5lu  %5s-bit  %s\\%s\n", 
         pe->name, pe->id, cpu, dom, uid);
     }
     xfree (procList);
@@ -370,30 +368,30 @@ void free_func (LPVOID func) {
 
 // runs position independent code in remote process
 BOOL inject (DWORD dwId, LPVOID pPIC, 
-  SIZE_T dwCode, LPVOID lpParam, SIZE_T dwParam, DWORD dbg)
+  DWORD dwCode, LPVOID lpParam, DWORD dwParam, DWORD dbg)
 {
   HANDLE                hProc, hThread;
   BOOL                  bStatus=FALSE, bRemoteWow64, bLocalWow64;
   LPVOID                pCode=NULL, pData=NULL;
-  SIZE_T                written;
-  DWORD                 old, idx, ec;
+  DWORD                 written;
+  DWORD                 idx, ec;
   pCreateRemoteThread64 CreateRemoteThread64=NULL;
-  char                  *process;
+  wchar_t               *process;
   DWORD                 mode = GetMode();
   
   // try open the process
-  printf("  [ opening process id %lu\n", dwId);
+  wprintf(L"  [ opening process id %lu\n", dwId);
   hProc = OpenProcess (PROCESS_ALL_ACCESS, FALSE, dwId);
   if (hProc != NULL)
   {
     // allocate memory there
-    printf("  [ allocating %lu bytes of XRW memory in process for code\n", dwCode);
+    wprintf(L"  [ allocating %lu bytes of XRW memory in process for code\n", dwCode);
     pCode=VirtualAllocEx (hProc, 0, dwCode, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
     if (pCode != NULL)
     {
       // write the code
-      printf("  [ writing %lu bytes of code to 0x%p\n", dwCode, pCode);
-      bStatus=WriteProcessMemory (hProc, pCode, pPIC, dwCode, &written);
+      wprintf(L"  [ writing %lu bytes of code to 0x%p\n", dwCode, pCode);
+      bStatus=WriteProcessMemory (hProc, pCode, pPIC, dwCode, (SIZE_T*)&written);
       
       if (bStatus) {
         /**printf("  [ changing memory attributes to RX\n");
@@ -402,14 +400,14 @@ BOOL inject (DWORD dwId, LPVOID pPIC,
         
         // is there a parameter required for PIC?
         if (lpParam != NULL) {
-          printf("  [ allocating %lu bytes of RW memory in process for parameter\n", dwParam);
+          wprintf(L"  [ allocating %lu bytes of RW memory in process for parameter\n", dwParam);
           pData=VirtualAllocEx (hProc, 0, dwParam+1, MEM_COMMIT, PAGE_READWRITE);
           if (pData != NULL)
           {
-            printf("  [ writing %lu bytes of data to 0x%p\n", dwParam, pData);
-            bStatus=WriteProcessMemory (hProc, pData, lpParam, dwParam, &written);
+            wprintf(L"  [ writing %lu bytes of data to 0x%p\n", dwParam, pData);
+            bStatus=WriteProcessMemory (hProc, pData, lpParam, dwParam, (SIZE_T*)&written);
             if (!bStatus) {
-              printf ("  [ warning: unable to allocate write parameters to process...");
+              wprintf (L"  [ warning: unable to allocate write parameters to process...");
             }
           }
         }
@@ -418,18 +416,18 @@ BOOL inject (DWORD dwId, LPVOID pPIC,
         bRemoteWow64 = IsWow64(hProc);
         
         if (!bRemoteWow64 && mode != X86_MODE) {
-          process="64";
-        } else process="32";
+          process=L"64";
+        } else process=L"32";
         
-        printf("  [ remote process is %s-bit\n", process);
+        wprintf(L"  [ remote process is %s-bit\n", process);
                 
         if (dbg) {
-          printf("  [ attach debugger now or set breakpoint on %p\n", pCode);
-          printf("  [ press any key to continue . . .\n");
+          wprintf(L"  [ attach debugger now or set breakpoint on %p\n", pCode);
+          wprintf(L"  [ press any key to continue . . .\n");
           fgetc (stdin);
         }
         
-        printf("  [ creating thread\n");
+        wprintf(L"  [ creating thread\n");
         
         // if remote process is not wow64 but I am,
         // make switch to 64-bit for thread creation.
@@ -448,26 +446,24 @@ BOOL inject (DWORD dwId, LPVOID pPIC,
         }
         if (hThread != NULL)
         {
-          printf ("  [ waiting for thread %lx to terminate\n", (DWORD)hThread);
+          wprintf (L"  [ waiting for thread %p to terminate\n", hThread);
           idx=WaitForSingleObject (hThread, INFINITE);
           if (idx!=0) {
             xstrerror ("WaitForSingleObject");
           }
           ec=0;
           if (GetExitCodeThread(hThread, &ec)) {
-            printf ("  [ exit code was %lu (%08lX)", ec, ec);
+            wprintf (L"  [ exit code was %lu (%08lX)", ec, ec);
           }
           CloseHandle (hThread);
         } else {
           xstrerror ("CreateRemoteThread");
         }
       }
-      if (idx==0) {
-        VirtualFreeEx (hProc, pCode, 0, MEM_RELEASE);
-        if (pData!=NULL) {
-          VirtualFreeEx (hProc, pData, 0, MEM_RELEASE);
-        }
-      }
+       VirtualFreeEx (hProc, pCode, 0, MEM_RELEASE);
+       if (pData!=NULL) {
+         VirtualFreeEx (hProc, pData, 0, MEM_RELEASE);
+       }
     } else {
       xstrerror ("VirtualFreeEx()");
     }
@@ -495,20 +491,20 @@ BOOL read_pic (wchar_t f[], LPVOID *code, SIZE_T *code_size) {
   DWORD  read;
   BOOL   bStatus=FALSE;
   
-  printf ("  [ opening %ws\n", f);
+  wprintf (L"  [ opening %s\n", f);
   hFile=CreateFile (f, GENERIC_READ, FILE_SHARE_READ,
       0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
       
   if (hFile != INVALID_HANDLE_VALUE)
   {
-    printf ("  [ getting size\n");
+    wprintf (L"  [ getting size\n");
     size = GetFileSize (hFile, 0);
     
-    printf ("  [ allocating %lu bytes of memory for file\n", size);
+    wprintf (L"  [ allocating %lu bytes of memory for file\n", size);
     pData=xmalloc(size);
     if (pData != NULL)
     {
-      printf ("  [ reading\n");
+      wprintf (L"  [ reading\n");
       bStatus=ReadFile (hFile, pData, size, &read, 0);
       *code=pData;
       *code_size=read;
@@ -532,23 +528,23 @@ wchar_t* getparam (int argc, wchar_t *argv[], int *i)
     *i=n+1;
     return argv[n+1];
   }
-  printf ("  [ %c%c requires parameter\n", argv[n][0], argv[n][1]);
+  wprintf (L"  [ %c%c requires parameter\n", argv[n][0], argv[n][1]);
   exit (0);
 }
 
 void usage (void)
 {
-  printf("\n  usage: pi [options] <proc name | proc id>\n\n");
-  printf("       -d          Wait after memory allocation before running thread\n");
-  printf("       -e <cmd>    Execute command in context of remote process (shows window)\n");
-  printf("       -f <file>   Load a PIC file into remote process\n");
-  printf("       -l <dll>    Load a DLL file into remote process\n");
-  printf("       -p          List available processes on system\n");
-  printf("       -x <cpu>    Exclude process running in cpu mode, 32 or 64\n\n");
-  printf(" examples:\n\n");
-  printf("    pi -e \"cmd /c echo this is a test > test.txt & notepad test.txt\" -x32 iexplore.exe\n");
-  printf("    pi -l ws2_32.dll notepad.exe\n");
-  printf("    pi -f reverse_shell.bin chrome.exe\n");
+  wprintf(L"\n  usage: pi [options] <proc name | proc id>\n\n");
+  wprintf(L"       -d          Wait after memory allocation before running thread\n");
+  wprintf(L"       -e <cmd>    Execute command in context of remote process (shows window)\n");
+  wprintf(L"       -f <file>   Load a PIC file into remote process\n");
+  wprintf(L"       -l <dll>    Load a DLL file into remote process\n");
+  wprintf(L"       -p          List available processes on system\n");
+  wprintf(L"       -x <cpu>    Exclude process running in cpu mode, 32 or 64\n\n");
+  wprintf(L" examples:\n\n");
+  wprintf(L"    pi -e \"cmd /c echo this is a test > test.txt & notepad test.txt\" -x32 iexplore.exe\n");
+  wprintf(L"    pi -l ws2_32.dll notepad.exe\n");
+  wprintf(L"    pi -f reverse_shell.bin chrome.exe\n");
   exit (0);
 }
 
@@ -560,7 +556,7 @@ int main (void)
   wchar_t *proc=NULL, *pic=NULL; 
   wchar_t *dll=NULL, *cmd=NULL;
   wchar_t *cpu=NULL;
-  int     i, plist=0, native=0, dbg=0;
+  int     i, plist=0, dbg=0;
   wchar_t opt;
   wchar_t **argv;
   int     argc;
@@ -569,8 +565,8 @@ int main (void)
   
   setw (300);
   
-  printf("\n  [ PIC/DLL injector v0.2");
-  printf("\n  [ Copyright (c) 2014-2017 Odzhan\n\n");
+  wprintf(L"\n  [ PIC/DLL injector v0.2");
+  wprintf(L"\n  [ Copyright (c) 2014-2017 Odzhan\n\n");
   
   for (i=1; i<argc; i++) {
     if (argv[i][0]==L'/' || argv[i][0]==L'-') {
@@ -612,19 +608,19 @@ int main (void)
 #if !defined (__GNUC__)  
   // check if we're elevated token just incase target requires it
   if (!isElevated ()) {
-    printf ("  [ warning: current process token isn't elevated\n");
+    wprintf (L"  [ warning: current process token isn't elevated\n");
   }
 #endif
 
   // enable debug privilege in case remote process requires it
   if (!set_priv (SE_DEBUG_NAME, TRUE)) {
-    printf ("  [ warning: unable to enable debug privilege\n");
+    wprintf (L"  [ warning: unable to enable debug privilege\n");
   }
 
   if (cpu!=NULL) {
     cpu_mode=wcstol (cpu, NULL, 10);
     if (cpu_mode!=32 && cpu_mode!=64) {
-      printf ("  [ invalid cpu mode. 32 and 64 are valid");
+      wprintf (L"  [ invalid cpu mode. 32 and 64 are valid");
       return 0;
     }
   }
@@ -637,7 +633,7 @@ int main (void)
   
   // no target process?
   if (proc==NULL) {
-    printf ("  [ no target process specified\n");
+    wprintf (L"  [ no target process specified\n");
     usage();
   }
   
@@ -645,22 +641,22 @@ int main (void)
   pid=wcstol (proc, NULL, 10);
   
   if (pid==0) {
-    printf ("  [ searching %s-bit processes for %ws\n", 
-      cpu_mode==0 ? "32 and 64" : (cpu_mode==64 ? "32" : "64"), proc);
+    wprintf (L"  [ searching %s-bit processes for %s\n", 
+      cpu_mode==0 ? L"32 and 64" : (cpu_mode==64 ? L"32" : L"64"), proc);
     // else get id from name
     pid=name2pid (proc, cpu_mode);
   }
   
   // no target action?
   if (cmd==NULL && dll==NULL && pic==NULL) {
-    printf ("  [ no action specified for %ws\n", proc);
+    wprintf (L"  [ no action specified for %s\n", proc);
     usage();
   }
   
   // have a pid?
   if (pid == 0)
   {
-    printf ("  [ unable to obtain process id for %ws\n", proc);
+    wprintf (L"  [ unable to obtain process id for %ws\n", proc);
     return 0;
   }
   

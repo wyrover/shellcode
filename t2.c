@@ -83,14 +83,7 @@
   #include "bsd/sh64.h"
   #include "bsd/cmd64.h"
   #include "bsd/rs64.h"
-  #include "bsd/bs64.h" 
-#elif defined(OSX32)
-#define TARGET "x86 OSX"
-  #include "osx/cfg32.h"
-  #include "osx/sh32.h"
-  #include "osx/cmd32.h"
-  #include "osx/rs32.h"
-  #include "osx/bs32.h"  
+  #include "bsd/bs64.h"  
 #elif defined(OSX)
 #define TARGET "x86-64 OSX"
   #include "osx/cfg64.h"

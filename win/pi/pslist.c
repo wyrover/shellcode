@@ -193,7 +193,6 @@ typedef struct _PROCENTRY_T {
 PPROCENTRY GetProcessList(VOID)
 {
   pNtQuerySystemInformation   NtQuerySystemInformation;
-  pRtlCompareUnicodeString    RtlCompareUnicodeString;
   ULONG                       len=0, total=0, pe_size=0;
   NTSTATUS                    status;
   LPVOID                      list=NULL;
@@ -203,7 +202,7 @@ PPROCENTRY GetProcessList(VOID)
   
   NtQuerySystemInformation = 
       (pNtQuerySystemInformation)GetProcAddress(
-      GetModuleHandle("ntdll"), "NtQuerySystemInformation");
+      GetModuleHandle(L"ntdll"), "NtQuerySystemInformation");
       
   if (!NtQuerySystemInformation) {
     // we couldn't resolve API address
@@ -325,13 +324,13 @@ int main(void)
   PPROCENTRY list = GetProcessList();
   
   if (list==NULL) {
-    printf ("\nUnable to retrieve list of process");
+    wprintf (L"\nUnable to retrieve list of process");
     return 0;
   }
-  printf ("\nList of processes");
-  printf ("\n=================");
+  wprintf ("\nList of processes");
+  wprintf ("\n=================");
   for (pe=list; pe->id; pe++) {
-    printf ("\n%-30ws - %i", pe->name, pe->id);
+    wprintf (L"\n%-30s - %i", pe->name, pe->id);
   }
   xfree(list);  
   return 0;
